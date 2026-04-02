@@ -22,8 +22,8 @@ def Classification_Algorithm(TRAIN, TRAIN_class_labels, unknown_object):
 
 def UCR_time_series_test():
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    TRAIN = np.loadtxt('SyntheticControl_TRAIN.tsv') # Only these two lines need to be changed to test a different data set. %
-    TEST = np.loadtxt('SyntheticControl_TEST.tsv')   # Only these two lines need to be changed to test a different data set. %
+    TRAIN = np.loadtxt(r'C:\Users\UTENTE\CLionProjects\FIRST_ASSIGNMENT\data\SyntheticControl\SyntheticControl_TRAIN.tsv')
+    TEST = np.loadtxt(r'C:\Users\UTENTE\CLionProjects\FIRST_ASSIGNMENT\data\SyntheticControl\SyntheticControl_TEST.tsv')
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     TRAIN_class_labels = TRAIN[:, 0] # Pull out the class labels (0 column in Python).
