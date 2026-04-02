@@ -54,6 +54,3 @@ def UCR_time_series_test():
     print('The error rate was ' + str(error_rate))
     # %%%%%%%%%%%%%%%%% End Report %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-# Punto di avvio dello script in Python
-if __name__ == "__main__":
-    UCR_time_series_test()
