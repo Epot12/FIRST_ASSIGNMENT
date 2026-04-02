@@ -48,6 +48,7 @@ env/
 *.csv
 *.tsv
 *.txt
+!CMakeLists.txt
 *.dat
 *.json
 
