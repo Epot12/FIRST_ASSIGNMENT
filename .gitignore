@@ -1,0 +1,78 @@
+# ==========================================
+# 1. CLion & JetBrains IDEs
+# ==========================================
+# Ignora le configurazioni locali dell'IDE
+.idea/
+!.idea/codeStyles/
+!.idea/vcs.xml
+
+# ==========================================
+# 2. CMake e C++ Build Artifacts (Il Motore HPC)
+# ==========================================
+# Ignora tutte le cartelle di build create da CLion/CMake
+cmake-build-*/
+build/
+out/
+
+# Ignora i file oggetto e gli eseguibili compilati
+*.o
+*.obj
+*.exe
+*.out
+*.app
+*.dylib
+*.dll
+*.so
+
+# ==========================================
+# 3. Python (Preparazione Dati)
+# ==========================================
+# Ignora la cache di Python e i file compilati
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignora gli Ambienti Virtuali
+venv/
+.venv/
+env/
+.env/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# ==========================================
+# 4. Data and Time Series Datasets
+# ==========================================
+
+*.csv
+*.tsv
+*.txt
+*.dat
+*.json
+
+# Ignora archivi compressi scaricati (es. UCR Archive)
+*.zip
+*.tar.gz
+*.rar
+
+
+data/*
+dataset/*
+datasets/*
+
+!data/.gitkeep
+!dataset/.gitkeep
+
+# ==========================================
+# 5. OS Specific
+# ==========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
