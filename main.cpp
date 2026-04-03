@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
-#include "DataLoader.h"
+#include "data_loader.h"
 #include "QueryGenerator.hpp"
 #include "find_pattern_opt.h"
 
@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
         for (size_t q_idx = 0; q_idx < queries.size(); ++q_idx) {
 
 
-            match_result result = find_pattern(queries[q_idx], database);
+            match_result result = find_pattern_opt(queries[q_idx], database);
 
 
             if (result.distance < 1e-5) {
