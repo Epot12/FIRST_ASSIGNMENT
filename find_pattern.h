@@ -9,6 +9,6 @@
 #include "match_result.h"
 using namespace std;
 
-match_result find_pattern(vector<real_t> query, vector<vector<real_t>> data) {}
+match_result find_pattern(vector<real_t> query, vector<vector<real_t>> &data) {}
 
 #endif //FIRST_ASSIGNMENT_FIND_PATTERN_H
