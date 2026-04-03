@@ -9,5 +9,5 @@ add_executable(FIRST_ASSIGNMENT main.cpp
         slide_window.cpp
         find_pattern.cpp
         find_pattern.h
-        MatchResult.h
-        MatchResult.h)
+        match_result.h
+        match_result.h)

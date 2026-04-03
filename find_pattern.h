@@ -5,6 +5,6 @@
 #ifndef FIRST_ASSIGNMENT_FIND_PATTERN_H
 #define FIRST_ASSIGNMENT_FIND_PATTERN_H
 
-
+#include "match_result.h"
 
 #endif //FIRST_ASSIGNMENT_FIND_PATTERN_H
