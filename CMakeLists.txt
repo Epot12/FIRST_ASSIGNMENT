@@ -9,4 +9,8 @@ add_executable(FIRST_ASSIGNMENT main.cpp
         match_result.h
         match_result.h
         z_normalize.h
-        z_normalize.h)
+        z_normalize.h
+        find_pattern_opt.h
+        find_pattern_opt.h
+        find_pattern_opt.cpp
+        find_pattern_opt.cpp)

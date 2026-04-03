@@ -1,3 +1,5 @@
+//This code provides the naive implementation of sequential pattern search using euclidean distance
+
 
 #ifndef FIRST_ASSIGNMENT_FIND_PATTERN_H
 #define FIRST_ASSIGNMENT_FIND_PATTERN_H
