@@ -7,4 +7,6 @@ add_executable(FIRST_ASSIGNMENT main.cpp
         find_pattern.cpp
         find_pattern.h
         match_result.h
-        match_result.h)
+        match_result.h
+        z_normalize.h
+        z_normalize.h)
