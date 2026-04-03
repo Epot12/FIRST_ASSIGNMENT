@@ -8,4 +8,6 @@ add_executable(FIRST_ASSIGNMENT main.cpp
         slide_window.h
         slide_window.cpp
         find_pattern.cpp
-        find_pattern.h)
+        find_pattern.h
+        MatchResult.h
+        MatchResult.h)
