@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <string>
 
-std::vector<SyntheticQuery> QueryGenerator::generate(
+std::vector<synthetic_query> query_generator::generate(
         const std::vector<std::vector<real_t>>& database,
         size_t num_queries,
         size_t query_length,
@@ -29,7 +29,7 @@ std::vector<SyntheticQuery> QueryGenerator::generate(
     }
 
     // memory allocation
-    std::vector<SyntheticQuery> generated_queries;
+    std::vector<synthetic_query> generated_queries;
     generated_queries.reserve(num_queries);
 
     // random generator (64 bit Mersenne Twister)
@@ -46,7 +46,7 @@ std::vector<SyntheticQuery> QueryGenerator::generate(
         std::uniform_int_distribution<size_t> start_dist(0, T.size() - query_length);
         size_t start_idx = start_dist(gen);
 
-        SyntheticQuery sq;
+        synthetic_query sq;
         sq.data = std::vector<real_t>(T.begin() + start_idx, T.begin() + start_idx + query_length);
         sq.source_series_id = actual_series_id;
         sq.source_start_idx = start_idx;

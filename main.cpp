@@ -3,7 +3,7 @@
 #include <string>
 #include <chrono>
 #include "data_loader.h"
-#include "QueryGenerator.hpp"
+#include "query_generator.h"
 #include "find_pattern_opt.h"
 
 using namespace std;
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
 
 
         cout << "[Prep] Estrazione sintetica delle query in corso...\n";
-        auto queries = QueryGenerator::extract_queries(database, config.num_queries, config.query_length, config.seed);
+        auto queries = query_generator::extract_queries(database, config.num_queries, config.query_length, config.seed);
         cout << "[Prep] " << queries.size() << " query pronte all'uso.\n\n";
 
 
