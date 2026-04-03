@@ -37,6 +37,16 @@ match_result find_pattern(const vector<real_t> &query, const vector<vector<real_
 
             if (count >= m - 1) {
 
+                size_t sliding_step = count - (m - 1);
+                if (sliding_step > 0 && sliding_step % 1000000 == 0) { //this is to manage big datasets and avoid precision errors
+                    ex = 0.0;
+                    ex2 = 0.0;
+                    for (size_t k = 0; k < m; k++) {
+                        ex += X[k];
+                        ex2 += X[k] * X[k];
+                    }
+                }
+
                 real_t mu = ex / m;
                 // to avoid precision errors
                 real_t variance = (ex2 / m) - (mu * mu);
