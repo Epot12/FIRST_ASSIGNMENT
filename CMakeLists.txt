@@ -15,4 +15,6 @@ add_executable(FIRST_ASSIGNMENT main.cpp
         find_pattern_opt.cpp
         find_pattern_opt.cpp
         data_loader.cpp
-        data_loader.h)
+        data_loader.h
+        query_generator.cpp
+        query_generator.h)
