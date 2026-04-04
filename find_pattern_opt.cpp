@@ -15,6 +15,7 @@ match_result find_pattern_opt(const vector<real_t> &query, const vector<vector<r
 
     vector<real_t> query_norm = query;
     z_normalize(query_norm);
+    vector<real_t> X(m); // circular buffer with dimension 'm'
 
     for (size_t i = 0; i < db_size; i++) {
         const vector<real_t>& T = data[i];
@@ -22,7 +23,6 @@ match_result find_pattern_opt(const vector<real_t> &query, const vector<vector<r
 
         if (series_size < m) continue;
 
-        vector<real_t> X(m, 0.0); // circular buffer with dimension 'm'
         real_t ex = 0.0;
         real_t ex2 = 0.0;
 
@@ -70,8 +70,9 @@ match_result find_pattern_opt(const vector<real_t> &query, const vector<vector<r
                 if (dist < best_result.distance) {
                     // The paper saves the end of the window..
                     // Here the beginning is saved. It should be more useful.
-                    size_t start_idx = count - m + 1;
-                    best_result = match_result(i, start_idx, dist);
+                    best_result.series_id = i;
+                    best_result.start_index = count - m + 1;
+                    best_result.distance = dist;
                 }
 
                 real_t old_val = X[(idx_circ + 1) % m];
