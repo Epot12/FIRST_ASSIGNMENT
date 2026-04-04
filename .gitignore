@@ -77,4 +77,7 @@ datasets/*
 # Windows
 Thumbs.db
 ehthumbs.db
-Desktop.ini
+Desktop.inicmake-build-debug/
+build_release/
+data/
+.idea/
