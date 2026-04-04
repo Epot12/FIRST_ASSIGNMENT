@@ -13,6 +13,7 @@
 cmake-build-*/
 build/
 out/
+build_release/
 
 # Ignora i file oggetto e gli eseguibili compilati
 *.o
