@@ -30,24 +30,39 @@ def main():
     os.makedirs(build_dir, exist_ok=True)
 
     # Invoke CMake to configure and compile
-    # cwd=build_dir is equivalent to doing 'cd build_release' before running the command
+
     run_command(["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."], cwd=build_dir)
-    run_command(["cmake", "--build", "."], cwd=build_dir)
+    run_command(["cmake", "--build", ".", "--config", "Release"], cwd=build_dir)
 
     print("\n[1/2] Compilation completed successfully!")
     print("---------------------------------------------------")
 
     # CONFIGURATION OF TEST PARAMETERS
-    # Search for cross-platform executable (Windows adds .exe, Linux/Mac do not)
-    base_exec_path = os.path.join(build_dir, "FIRST_ASSIGNMENT")
+    print("[Prep] Searching for the executable...")
 
-    if os.path.isfile(base_exec_path + ".exe"):
-        exec_path = base_exec_path + ".exe"
-    elif os.path.isfile(base_exec_path):
-        exec_path = base_exec_path
-    else:
-        print(f"\n[ERROR] Executable not found in folder {build_dir}. Compilation failed?", file=sys.stderr)
+
+
+    possible_paths = [
+        os.path.join(build_dir, "Release", "FIRST_ASSIGNMENT.exe"), # Standard MSVC Release
+        os.path.join(build_dir, "FIRST_ASSIGNMENT.exe"),           # Root build (Windows)
+        os.path.join(build_dir, "Debug", "FIRST_ASSIGNMENT.exe"),   # fallback Debug MSVC
+        os.path.join(build_dir, "FIRST_ASSIGNMENT"),               # Standard Linux/Mac
+    ]
+
+    exec_path = None
+
+    for p in possible_paths:
+        if os.path.isfile(p):
+            exec_path = p
+            break
+
+
+    if not exec_path:
+        print(f"\n[ERROR] Executable not found. Checked: {possible_paths}", file=sys.stderr)
         sys.exit(1)
+
+    print(f"[Prep] Executable found at: {exec_path}")
+
 
     # Setting the target dataset and parameters
     dataset = "data/UCRArchive_2018/CinCECGTorso/CinCECGTorso_TEST.tsv"
@@ -74,7 +89,7 @@ def main():
     run_command(run_args)
 
     print("===================================================")
-    print("             BENCHMARK CONCLUSO        ")
+    print("             BENCHMARK FINISHED      ")
     print("===================================================")
 
 if __name__ == "__main__":
