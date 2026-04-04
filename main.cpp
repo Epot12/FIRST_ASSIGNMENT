@@ -77,24 +77,31 @@ int main(int argc, char* argv[]) {
 
 
         cout << "[Prep] Estrazione sintetica delle query in corso...\n";
-        auto queries = query_generator::extract_queries(database, config.num_queries, config.query_length, config.seed);
-        cout << "[Prep] " << queries.size() << " query pronte all'uso.\n\n";
 
+        auto queries = query_generator::generate(database, config.num_queries, config.query_length, config.seed);
+        cout << "[Prep] " << queries.size() << " query pronte all'uso.\n\n";
 
         cout << "Inizio elaborazione pattern matching...\n";
         auto start_compute = high_resolution_clock::now();
 
-
         size_t success_count = 0;
-
 
         for (size_t q_idx = 0; q_idx < queries.size(); ++q_idx) {
 
+            // query extraction
+            const synthetic_query& current_query = queries[q_idx];
 
-            match_result result = find_pattern_opt(queries[q_idx], database);
+            // only ure data (.data) to the algorithm
+            match_result result = find_pattern_opt(current_query.data, database);
 
-
-            if (result.distance < 1e-5) {
+            // Sanity Check
+            // verifying whether the algorithm found the correct coordinate where the query was generated
+            if (result.series_id == current_query.source_series_id &&
+                result.start_index == current_query.source_start_idx) {
+                success_count++;
+            }
+                // additional control: if the signal is flat (e.g. all zeros) and the algorithm finds a 0 distance elsewhere
+            else if (result.distance < 1e-5) {
                 success_count++;
             }
         }
@@ -103,7 +110,7 @@ int main(int argc, char* argv[]) {
         auto duration_compute = duration_cast<milliseconds>(end_compute - start_compute).count();
 
         cout << "\n[Compute] Tempo totale di calcolo: " << duration_compute << " ms.\n";
-        cout << "[Compute] Sanity Check: Trovate " << success_count << "/" << config.num_queries << " corrispondenze perfette (distanza ~0.0).\n";
+        cout << "[Compute] Sanity Check: Trovate " << success_count << "/" << config.num_queries << " corrispondenze perfette.\n";
 
     } catch (const std::exception& e) {
         cerr << "\nERRORE CRITICO: " << e.what() << "\n";
@@ -112,3 +119,4 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+

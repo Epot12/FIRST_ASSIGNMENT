@@ -6,7 +6,7 @@
 
 using namespace std;
 
-match_result find_pattern(const vector<real_t> &query, const vector<vector<real_t>> &data) {
+match_result find_pattern_opt(const vector<real_t> &query, const vector<vector<real_t>> &data) {
     size_t db_size = data.size();
     size_t m = query.size();
 

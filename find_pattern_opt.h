@@ -10,6 +10,6 @@
 #include "find_pattern.h"
 #include "z_normalize.h"
 
-match_result find_pattern(const std::vector<real_t> &query, const std::vector<std::vector<real_t>> &data);
+match_result find_pattern_opt(const std::vector<real_t> &query, const std::vector<std::vector<real_t>> &data);
 
 #endif //FIRST_ASSIGNMENT_FIND_PATTERN_OPT_H
