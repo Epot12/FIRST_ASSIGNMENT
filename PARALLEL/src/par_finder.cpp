@@ -6,17 +6,22 @@
 #include "../headers/par_finder.h"
 #include "../../SEQUENTIAL/headers/match_result.h"
 #include "../../SEQUENTIAL/headers/z_normalize.h"
+#include "../headers/z_normalize.h"
 
 using namespace std;
 
 std::vector<match_result> par_finder(const std::vector<real_t> &flat_queries, size_t query_length, const std::vector<real_t> &flat_data, const std::vector<size_t>& data_offsets) {
     size_t db_size = data_offsets.size() - 1;
+    size_t num_queries = flat_queries.size() / query_length;
 
-    vector<match_result> best_results;
-    best_result.distance = std::numeric_limits<real_t>::infinity();
+    std::vector<real_t> flat_queries_norm(flat_queries.size());
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t q = 0; q < num_queries; q++) {
+        size_t offset = q * query_length;
 
-    vector<real_t> query_norm = query;
-    z_normalize(query_norm);
+        // passing the starting address of the query and its length
+        z_normalize(&flat_queries[offset], &flat_queries_norm[offset], query_length);
+    }
     vector<real_t> X(m); // circular buffer with dimension 'm'
 
     for (size_t i = 0; i < db_size; i++) {

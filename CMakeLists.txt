@@ -20,4 +20,5 @@ add_executable(FIRST_ASSIGNMENT
         PARALLEL/headers/par_finder.h
         PARALLEL/headers/par_finder.h
         PARALLEL/src/par_finder.cpp
-        PARALLEL/src/par_finder.cpp)
+        PARALLEL/src/par_finder.cpp
+        PARALLEL/headers/z_normalize.h)
