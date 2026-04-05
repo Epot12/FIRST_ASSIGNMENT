@@ -30,7 +30,7 @@ def main():
     os.makedirs(build_dir, exist_ok=True)
 
     # Invoke CMake to configure and compile
-    run_command(["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."], cwd=build_dir)
+    run_command(["cmake", "-DCMAKE_BUILD_TYPE=RelWithDebInfo", ".."], cwd=build_dir)
     run_command(["cmake", "--build", ".", "--config", "Release"], cwd=build_dir)
 
     print("\n[1/2] Compilation completed successfully!")
