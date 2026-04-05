@@ -1,4 +1,4 @@
-#include "query_generator.h"
+#include "../headers/query_generator.h"
 #include <random>
 #include <stdexcept>
 #include <string>

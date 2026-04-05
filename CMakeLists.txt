@@ -4,15 +4,15 @@ project(FIRST_ASSIGNMENT)
 set(CMAKE_CXX_STANDARD 17)
 
 add_executable(FIRST_ASSIGNMENT
-        find_pattern.cpp
-        find_pattern.h
-        match_result.h
-        z_normalize.h
-        find_pattern_opt.h
-        find_pattern_opt.cpp
-        data_loader.cpp
-        data_loader.h
-        query_generator.cpp
-        query_generator.h
-        main.cpp
-        main.cpp)
+        SEQUENTIAL/src/find_pattern.cpp
+        SEQUENTIAL/headers/find_pattern.h
+        SEQUENTIAL/headers/match_result.h
+        SEQUENTIAL/headers/z_normalize.h
+        SEQUENTIAL/headers/find_pattern_opt.h
+        SEQUENTIAL/src/find_pattern_opt.cpp
+        SEQUENTIAL/src/data_loader.cpp
+        SEQUENTIAL/headers/data_loader.h
+        SEQUENTIAL/src/query_generator.cpp
+        SEQUENTIAL/headers/query_generator.h
+        SEQUENTIAL/src/main.cpp
+        SEQUENTIAL/src/main.cpp)

@@ -2,10 +2,10 @@
 #include <vector>
 #include <string>
 #include <chrono>
-#include "data_loader.h"
-#include "query_generator.h"
-#include "find_pattern.h"
-#include "find_pattern_opt.h"
+#include "../headers/data_loader.h"
+#include "../headers/query_generator.h"
+#include "../headers/find_pattern.h"
+#include "../headers/find_pattern_opt.h"
 
 using namespace std;
 using namespace std::chrono;

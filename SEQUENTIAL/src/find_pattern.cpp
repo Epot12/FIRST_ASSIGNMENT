@@ -1,6 +1,6 @@
 #include <cmath>
-#include "find_pattern.h"
-#include "z_normalize.h"
+#include "../headers/find_pattern.h"
+#include "../headers/z_normalize.h"
 
 using namespace std;
 
