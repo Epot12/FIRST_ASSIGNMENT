@@ -15,4 +15,9 @@ add_executable(FIRST_ASSIGNMENT
         SEQUENTIAL/src/query_generator.cpp
         SEQUENTIAL/headers/query_generator.h
         SEQUENTIAL/src/main.cpp
-        SEQUENTIAL/src/main.cpp)
+        SEQUENTIAL/src/main.cpp
+        PARALLEL/headers/par_finder.h
+        PARALLEL/headers/par_finder.h
+        PARALLEL/headers/par_finder.h
+        PARALLEL/src/par_finder.cpp
+        PARALLEL/src/par_finder.cpp)
