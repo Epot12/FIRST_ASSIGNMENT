@@ -13,4 +13,6 @@ add_executable(FIRST_ASSIGNMENT main.cpp
         data_loader.cpp
         data_loader.h
         query_generator.cpp
-        query_generator.h)
+        query_generator.h
+        main_comparison.cpp
+        main_comparison.cpp)
