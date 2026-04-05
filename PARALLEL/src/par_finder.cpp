@@ -9,11 +9,10 @@
 
 using namespace std;
 
-match_result par_finder(const vector<real_t> &query, const vector<vector<real_t>> &data) {
-    size_t db_size = data.size();
-    size_t m = query.size();
+std::vector<match_result> par_finder(const std::vector<real_t> &flat_queries, size_t query_length, const std::vector<real_t> &flat_data, const std::vector<size_t>& data_offsets) {
+    size_t db_size = data_offsets.size() - 1;
 
-    match_result best_result;
+    vector<match_result> best_results;
     best_result.distance = std::numeric_limits<real_t>::infinity();
 
     vector<real_t> query_norm = query;

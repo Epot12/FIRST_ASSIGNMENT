@@ -7,6 +7,6 @@
 #include <vector>
 #include "../../SEQUENTIAL/headers/match_result.h"
 
-match_result par_finder(const std::vector<real_t> &query, const std::vector<std::vector<real_t>> &data);
+std::vector<match_result> par_finder(const std::vector<real_t> &flat_queries, const std::vector<real_t> &flat_data);
 
 #endif //FIRST_ASSIGNMENT_FIND_PATTERN_H
