@@ -3,7 +3,7 @@ project(FIRST_ASSIGNMENT)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(FIRST_ASSIGNMENT main.cpp
+add_executable(FIRST_ASSIGNMENT
         find_pattern.cpp
         find_pattern.h
         match_result.h
@@ -14,5 +14,5 @@ add_executable(FIRST_ASSIGNMENT main.cpp
         data_loader.h
         query_generator.cpp
         query_generator.h
-        main_comparison.cpp
-        main_comparison.cpp)
+        main.cpp
+        main.cpp)

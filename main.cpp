@@ -4,11 +4,11 @@
 #include <chrono>
 #include "data_loader.h"
 #include "query_generator.h"
+#include "find_pattern.h"
 #include "find_pattern_opt.h"
 
 using namespace std;
 using namespace std::chrono;
-
 
 struct Config {
     string dataset_path;
@@ -16,8 +16,8 @@ struct Config {
     size_t query_length = 0;
     unsigned int seed = 42;
     bool skip_dataset_first_col = false;
+    string algo = "both"; // can be "naive", "opt", or "both"
 };
-
 
 Config parse_arguments(int argc, char* argv[]) {
     Config config;
@@ -33,90 +33,114 @@ Config parse_arguments(int argc, char* argv[]) {
             if (i + 1 < argc) config.query_length = std::stoull(argv[++i]);
         } else if (arg == "--seed") {
             if (i + 1 < argc) config.seed = std::stoul(argv[++i]);
+        } else if (arg == "--algo") {
+            if (i + 1 < argc) config.algo = argv[++i];
         } else if (arg == "--skip-data-col") {
             config.skip_dataset_first_col = true;
         } else if (arg == "-h" || arg == "--help") {
-            cout << "Uso: " << argv[0] << " --dataset <file> --num-queries <N> --query-length <L> [opzioni]\n"
-                 << "Opzioni:\n"
-                 << "  --seed <S>        Seme per il generatore casuale (default: 42)\n"
-                 << "  --skip-data-col   Salta la prima colonna nel dataset (es. label UCR)\n";
+            cout << "Using: " << argv[0] << " --dataset <file> --num-queries <N> --query-length <L> [options]\n"
+                 << "Options:\n"
+                 << "  --seed <S>        Seed for random generator (default: 42)\n"
+                 << "  --algo <type>     Algorithm to be tested: 'naive', 'opt', 'both' (default: both)\n"
+                 << "  --skip-data-col   Avoids first column of the dataset (e.g. label UCR)\n";
             exit(0);
         }
     }
 
     if (config.dataset_path.empty() || config.num_queries == 0 || config.query_length == 0) {
-        cerr << "Errore: Parametri obbligatori mancanti (--dataset, --num-queries, --query-length).\n"
-             << "Usa -h per aiuto.\n";
+        cerr << "Error: mandatory parameters are missing (--dataset, --num-queries, --query-length).\n"
+             << "Use -h for help.\n";
+        exit(1);
+    }
+
+    if (config.algo != "naive" && config.algo != "opt" && config.algo != "both") {
+        cerr << "Error: Invalid --algo parameter. Use 'naive', 'opt' or 'both'.\n";
         exit(1);
     }
 
     return config;
 }
 
-
 int main(int argc, char* argv[]) {
-
     Config config = parse_arguments(argc, argv);
 
-    cout << "--- Inizio Benchmarking HPC ---\n";
+    cout << "===================================================\n";
+    cout << "             SEQUENTIAL PATTERN MATCHING BENCHMARK        \n";
+    cout << "===================================================\n";
     cout << "Dataset: " << config.dataset_path << "\n";
-    cout << "Generazione di " << config.num_queries << " query di lunghezza " << config.query_length << "\n";
-    cout << "Seme Random: " << config.seed << "\n\n";
+    cout << "Query: " << config.num_queries << " | Length: " << config.query_length << "\n";
+    cout << "Selected algorithm: " << config.algo << "\n";
+    cout << "Random seed: " << config.seed << "\n";
+    cout << "---------------------------------------------------\n";
 
     try {
-
+        // I/O Phase (Isolated from Compute)
         auto start_io = high_resolution_clock::now();
-
         auto database = DataLoader::load(config.dataset_path, config.skip_dataset_first_col);
-
         auto end_io = high_resolution_clock::now();
         auto duration_io = duration_cast<milliseconds>(end_io - start_io).count();
 
-        cout << "[I/O] Dataset caricato in memoria: " << database.size() << " serie temporali.\n";
-        cout << "[I/O] Tempo di caricamento: " << duration_io << " ms.\n\n";
+        cout << "[I/O] Dataset loaded: " << database.size() << " time series in " << duration_io << " ms.\n";
 
-
-        cout << "[Prep] Estrazione sintetica delle query in corso...\n";
-
+        // Preparation Phase
         auto queries = query_generator::generate(database, config.num_queries, config.query_length, config.seed);
-        cout << "[Prep] " << queries.size() << " query pronte all'uso.\n\n";
+        cout << "[Prep] " << queries.size() << " queries extracted and ready to use.\n";
+        cout << "---------------------------------------------------\n";
 
-        cout << "Inizio elaborazione pattern matching...\n";
-        auto start_compute = high_resolution_clock::now();
+        // Naive Algorithm Execution
+        if (config.algo == "naive" || config.algo == "both") {
+            cout << ">>> Starting processing [NAIVE]...\n";
+            size_t success_count = 0;
 
-        size_t success_count = 0;
+            auto start_compute = high_resolution_clock::now();
 
-        for (size_t q_idx = 0; q_idx < queries.size(); ++q_idx) {
+            for (const auto& current_query : queries) {
+                match_result result = find_pattern(current_query.data, database);
 
-            // query extraction
-            const synthetic_query& current_query = queries[q_idx];
-
-            // only ure data (.data) to the algorithm
-            match_result result = find_pattern_opt(current_query.data, database);
-
-            // Sanity Check
-            // verifying whether the algorithm found the correct coordinate where the query was generated
-            if (result.series_id == current_query.source_series_id &&
-                result.start_index == current_query.source_start_idx) {
-                success_count++;
+                if (result.series_id == current_query.source_series_id && result.start_index == current_query.source_start_idx) {
+                    success_count++;
+                } else if (result.distance < 1e-5) {
+                    success_count++;
+                }
             }
-                // additional control: if the signal is flat (e.g. all zeros) and the algorithm finds a 0 distance elsewhere
-            else if (result.distance < 1e-5) {
-                success_count++;
-            }
+
+            auto end_compute = high_resolution_clock::now();
+            auto duration_compute = duration_cast<milliseconds>(end_compute - start_compute).count();
+
+            cout << "[Compute NAIVE] Total time: " << duration_compute << " ms.\n";
+            cout << "[Compute NAIVE] Accuracy: " << success_count << "/" << config.num_queries << " perfect matches.\n";
+            cout << "---------------------------------------------------\n";
         }
 
-        auto end_compute = high_resolution_clock::now();
-        auto duration_compute = duration_cast<milliseconds>(end_compute - start_compute).count();
+        // Optimized Algorithm Execution
+        if (config.algo == "opt" || config.algo == "both") {
+            cout << ">>> Starting processing [OPTIMIZED]...\n";
+            size_t success_count = 0;
 
-        cout << "\n[Compute] Tempo totale di calcolo: " << duration_compute << " ms.\n";
-        cout << "[Compute] Sanity Check: Trovate " << success_count << "/" << config.num_queries << " corrispondenze perfette.\n";
+            auto start_compute = high_resolution_clock::now();
+
+            for (const auto& current_query : queries) {
+                match_result result = find_pattern_opt(current_query.data, database);
+
+                if (result.series_id == current_query.source_series_id && result.start_index == current_query.source_start_idx) {
+                    success_count++;
+                } else if (result.distance < 1e-5) {
+                    success_count++;
+                }
+            }
+
+            auto end_compute = high_resolution_clock::now();
+            auto duration_compute = duration_cast<milliseconds>(end_compute - start_compute).count();
+
+            cout << "[Compute OPT] Total time: " << duration_compute << " ms.\n";
+            cout << "[Compute OPT] Accuracy: " << success_count << "/" << config.num_queries << " perfect matches.\n";
+            cout << "---------------------------------------------------\n";
+        }
 
     } catch (const std::exception& e) {
-        cerr << "\nERRORE CRITICO: " << e.what() << "\n";
+        cerr << "\n[CRITICAL ERROR] " << e.what() << "\n";
         return 1;
     }
 
     return 0;
 }
-
