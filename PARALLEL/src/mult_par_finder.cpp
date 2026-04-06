@@ -55,10 +55,10 @@ std::vector<match_result> mult_par_finder(
 
                 size_t window_start_idx = ts_start + w;
                 // calculating mean and variance
-                real_t ex = 0.0;
-                real_t ex2 = 0.0;
                 real_t dist = 0.0;
 
+                real_t ex = 0.0, ex2 = 0.0;
+                #pragma omp simd reduction(+:ex, ex2)
                 for (size_t k = 0; k < query_length; k++) {
                     real_t val = flat_data[window_start_idx + k];
                     ex += val;
