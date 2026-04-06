@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 import time
+import shutil
 
 def run_command(command_list, cwd=None, env=None):
     try:
@@ -20,8 +21,16 @@ def main():
     build_dir = "build_release"
     os.makedirs(build_dir, exist_ok=True)
 
-    run_command(["cmake", "-DCMAKE_BUILD_TYPE=Debug", "-DUSE_TSAN=ON", ".."], cwd=build_dir)
-    run_command(["cmake", "--build", "."], cwd=build_dir)
+    if os.path.exists(build_dir):
+        shutil.rmtree(build_dir)
+    os.makedirs(build_dir, exist_ok=True)
+
+    build_env = os.environ.copy()
+    build_env["CC"] = "clang"
+    build_env["CXX"] = "clang++"
+
+    run_command(["cmake", "-DCMAKE_BUILD_TYPE=Debug", "-DUSE_TSAN=ON", ".."], cwd=build_dir, env=build_env)
+    run_command(["cmake", "--build", "."], cwd=build_dir, env=build_env)
 
     # searching executable
     possible_paths = [
@@ -56,6 +65,7 @@ def main():
         current_env = os.environ.copy()
         current_env["OMP_NUM_THREADS"] = str(t)
         current_env["OMP_SCHEDULE"] = "dynamic" # for load balancing
+        current_env["TSAN_OPTIONS"] = "ignore_noninstrumented_modules=1"
 
         run_args = [
             "setarch", "x86_64", "-R", #Disable Address Space Layout Randomization
