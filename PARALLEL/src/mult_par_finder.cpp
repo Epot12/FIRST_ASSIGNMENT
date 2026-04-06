@@ -2,7 +2,7 @@
 #include <cmath>
 #include <limits>
 #include <omp.h>
-#include "../headers/par_finder.h"
+#include "../headers/mult_par_finder.h"
 #include "../../SEQUENTIAL/headers/match_result.h"
 #include "../headers/z_normalize.h"
 
