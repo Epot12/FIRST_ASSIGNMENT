@@ -23,7 +23,7 @@ std::vector<match_result> mult_par_finder(
     std::vector<real_t> flat_queries_norm(flat_queries.size());
 
     // Parallel query computation
-#pragma omp parallel for schedule(dynamic) {
+#pragma omp parallel for schedule(dynamic)
     for (size_t q = 0; q < num_queries; q++) {
         size_t offset = q * query_length;
         // passing the starting address of the query and its length
@@ -36,7 +36,7 @@ std::vector<match_result> mult_par_finder(
         global_best.series_id = -1;
         global_best.start_index = 0;
 
-        // Time series loop (Sequential, because we parallelize the internal windows)
+        // Time series loop
         for (size_t i = 0; i < db_size; i++) {
             size_t ts_start = data_offsets[i];
             size_t ts_end = data_offsets[i + 1];
@@ -54,27 +54,29 @@ std::vector<match_result> mult_par_finder(
             for (size_t w = 0; w < num_windows; w++) {
 
                 size_t window_start_idx = ts_start + w;
-                // Stencil Pattern: Recalculation of mean and variance "from scratch" (O(m))
+                // calculating mean and variance
                 real_t ex = 0.0;
                 real_t ex2 = 0.0;
                 real_t dist = 0.0;
+
                 for (size_t k = 0; k < query_length; k++) {
                     real_t val = flat_data[window_start_idx + k];
                     ex += val;
                     ex2 += val * val;
+                }
 
+                real_t mu = ex / query_length;
+                real_t variance = (ex2 / query_length) - (mu * mu);
+                real_t sigma = (variance > 0.0) ? std::sqrt(variance) : 1e-8;
 
-                    real_t mu = ex / query_length;
-                    real_t variance = (ex2 / query_length) - (mu * mu);
-                    real_t sigma = (variance > 0.0) ? std::sqrt(variance) : 1e-8;
-
-                    // Calculation of the SAD distance
-
+                for (size_t k = 0; k < query_length; k++) {
                     real_t val_norm = (flat_data[window_start_idx + k] - mu) / sigma;
                     real_t diff = flat_queries_norm[offset + k] - val_norm;
                     dist += std::abs(diff);
 
-
+                    if (dist >= local_best.distance) {
+                            break;
+                    }
                 }
 
                 // LOCAL update
@@ -84,14 +86,15 @@ std::vector<match_result> mult_par_finder(
                     local_best.start_index = w;
                 }
             }
+
             if (local_best.distance < global_best.distance) {
                 global_best = local_best;
             }
-        }
 
+            }
         // Definitely saving the overall winner for the current query
         best_results[q] = global_best;
-    }
+        }
 
     return best_results;
 }
