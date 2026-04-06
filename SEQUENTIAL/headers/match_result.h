@@ -19,7 +19,7 @@ struct match_result {
     match_result()
             : series_id(0),
               start_index(0),
-              distance(std::numeric_limits<real_t>::infinity()) {}
+              distance(std::numeric_limits<real_t>::max()) {}
 
     // Costruttore Parametrizzato
     // permette di creare e restituire il risultato in una sola riga compatta.

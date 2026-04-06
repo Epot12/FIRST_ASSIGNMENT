@@ -32,7 +32,7 @@ std::vector<match_result> mult_par_finder(
         // This is the SHARED variable for the current query.
         // Will survive the parallel region.
         match_result global_best;
-        global_best.distance = std::numeric_limits<real_t>::infinity();
+        global_best.distance = std::numeric_limits<real_t>::max();
         global_best.series_id = -1;
         global_best.start_index = 0;
 
@@ -47,7 +47,7 @@ std::vector<match_result> mult_par_finder(
             size_t num_windows = series_size - query_length + 1; //number of sliding windows to evaluate
 
             match_result local_best;
-            local_best.distance = std::numeric_limits<real_t>::infinity();
+            local_best.distance = std::numeric_limits<real_t>::max();
             local_best.series_id = -1;
             local_best.start_index = 0;
 

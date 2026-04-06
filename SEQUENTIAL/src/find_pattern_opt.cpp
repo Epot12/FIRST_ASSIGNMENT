@@ -11,7 +11,7 @@ match_result find_pattern_opt(const vector<real_t> &query, const vector<vector<r
     size_t m = query.size();
 
     match_result best_result;
-    best_result.distance = std::numeric_limits<real_t>::infinity();
+    best_result.distance = std::numeric_limits<real_t>::max();
 
     vector<real_t> query_norm = query;
     z_normalize(query_norm);

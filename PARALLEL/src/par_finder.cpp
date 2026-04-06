@@ -37,7 +37,7 @@ std::vector<match_result> par_finder(
         // This is the SHARED variable for the current query.
         // Will survive the parallel region.
         match_result global_best;
-        global_best.distance = std::numeric_limits<real_t>::infinity();
+        global_best.distance = std::numeric_limits<real_t>::max();
         global_best.series_id = -1;
         global_best.start_index = 0;
 
@@ -55,7 +55,7 @@ std::vector<match_result> par_finder(
 #pragma omp parallel
             {
                 match_result local_best;
-                local_best.distance = std::numeric_limits<real_t>::infinity();
+                local_best.distance = std::numeric_limits<real_t>::max();
                 local_best.series_id = -1;
                 local_best.start_index = 0;
 
