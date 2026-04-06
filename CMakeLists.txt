@@ -41,7 +41,10 @@ add_executable(FIRST_ASSIGNMENT
         PARALLEL/src/par_finder.cpp
         PARALLEL/src/par_finder.cpp
         PARALLEL/headers/z_normalize.h
-        PARALLEL/src/main_par.cpp)
+        PARALLEL/src/main_par.cpp
+        PARALLEL/src/mult_par_finder.cpp
+        PARALLEL/src/mult_par_finder.h
+        PARALLEL/src/mult_par_finder.h)
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(FIRST_ASSIGNMENT PUBLIC OpenMP::OpenMP_CXX)
