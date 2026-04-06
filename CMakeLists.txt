@@ -3,6 +3,25 @@ project(FIRST_ASSIGNMENT)
 
 set(CMAKE_CXX_STANDARD 17)
 
+option(USE_ASAN "Activating AddressSanitizer (Memory Check)" OFF)
+option(USE_TSAN "Activating ThreadSanitizer (Concurrency Check)" OFF)
+
+if(USE_ASAN AND USE_TSAN)
+    message(FATAL_ERROR "cannot activate ASAN and TSAN at the same time")
+endif()
+
+if(USE_ASAN)
+    message(STATUS ">>> Compiling with AddressSanitizer <<<")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+endif()
+
+if(USE_TSAN)
+    message(STATUS ">>> Compiling with ThreadSanitizer <<<")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread -g -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
+endif()
+
 find_package(OpenMP REQUIRED)
 
 add_executable(FIRST_ASSIGNMENT
