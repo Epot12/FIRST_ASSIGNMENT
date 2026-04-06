@@ -45,7 +45,9 @@ add_executable(FIRST_ASSIGNMENT
         PARALLEL/headers/mult_par_finder.h
         PARALLEL/src/main_mult_par.cpp
         PARALLEL/src/dat_par_finder.cpp
-        PARALLEL/headers/dat_par_finder.h)
+        PARALLEL/headers/dat_par_finder.h
+        PARALLEL/src/main_dat_par.cpp
+        PARALLEL/src/main_dat_par.cpp)
 
 if(OpenMP_CXX_FOUND)
     target_link_libraries(FIRST_ASSIGNMENT PUBLIC OpenMP::OpenMP_CXX)
