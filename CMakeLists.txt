@@ -50,3 +50,12 @@ add_executable(FIRST_ASSIGNMENT
 if(OpenMP_CXX_FOUND)
     target_link_libraries(FIRST_ASSIGNMENT PUBLIC OpenMP::OpenMP_CXX)
 endif()
+
+find_library(PROFILER_LIB profiler)
+
+if(PROFILER_LIB)
+    message(STATUS ">>> Profiler library found. Linking to FIRST_ASSIGNMENT <<<")
+    target_link_libraries(FIRST_ASSIGNMENT PUBLIC ${PROFILER_LIB})
+else()
+    message(WARNING "Profiler library not found. Install gperftools if you want to profile.")
+endif()
