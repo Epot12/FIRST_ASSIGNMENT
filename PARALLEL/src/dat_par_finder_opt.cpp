@@ -8,7 +8,7 @@
 
 using namespace std;
 
-std::vector<match_result> dat_par_finder(
+std::vector<match_result> dat_par_finder_opt(
         const std::vector<real_t> &flat_queries, size_t query_length,
         const std::vector<real_t> &flat_data, const std::vector<size_t>& data_offsets) {
 
@@ -28,22 +28,21 @@ std::vector<match_result> dat_par_finder(
 
     std::vector<real_t> flat_queries_norm(flat_queries.size());
 
-    // 1. BATCH PRE-PROCESSING: Normalizzazione sequenziale o auto-vettorializzata
-    // Viene eseguita UNA sola volta per tutte le query prima di aprire i thread.
+    // 1. BATCH PRE-PROCESSING: vectorized normalization
     for (size_t q = 0; q < num_queries; q++) {
         size_t offset = q * query_length;
         z_normalize(&flat_queries[offset], &flat_queries_norm[offset], query_length);
     }
 
-    // 2. HOISTING DELLA REGIONE PARALLELA: Il Fork-Join avviene UNA SOLA VOLTA
+    // 2. BEGINNING OF PARALLEL REGION
 #pragma omp parallel
     {
-        // Allocazione del Buffer Circolare LOCALE al thread.
-        // Essendo fuori dai cicli, allochiamo la memoria una volta sola per thread!
+        // Allocation of the LOCAL Circular Buffer to the thread.
+        // Being out of loops, memory is allocated only once per thread
         std::vector<real_t> X(query_length);
 
-        // Ciclo esterno sulle query (Ogni thread esplora tutte le query,
-        // ma si divideranno il carico delle time series internamente)
+        // Outer loop on queries (Each thread explores all queries,
+        // but they will share the time series load internally)
         for (size_t q = 0; q < num_queries; q++) {
             size_t q_offset = q * query_length;
 
@@ -52,8 +51,8 @@ std::vector<match_result> dat_par_finder(
             thread_best.series_id = -1;
             thread_best.start_index = 0;
 
-            // 3. LOAD BALANCING AVANZATO: Chunk size 16 per ridurre le chiamate all'OS
-            // L'uso di "nowait" permette ai thread più veloci di passare subito alla query successiva
+            // 3. LOAD BALANCING: Chunk size 16 to reduce OS calls
+            // Using "nowait" allows faster threads to move on to the next query immediately
 #pragma omp for schedule(dynamic, 16) nowait
             for (size_t i = 0; i < db_size; i++) {
                 size_t ts_start = data_offsets[i];
@@ -65,7 +64,7 @@ std::vector<match_result> dat_par_finder(
                 real_t ex = 0.0;
                 real_t ex2 = 0.0;
 
-                // 4. IL MOTORE O(1): Algoritmo a Buffer Circolare
+                // 4. Circular Buffer Algorithm
                 for (size_t count = 0; count < series_size; count++) {
                     size_t idx_circ = count % query_length;
 
@@ -75,7 +74,7 @@ std::vector<match_result> dat_par_finder(
 
                     if (count >= query_length - 1) {
 
-                        // Correzione di precisione per serie temporali gigantesche
+                        // Precision correction for big time series
                         size_t sliding_step = count - (query_length - 1);
                         if (sliding_step > 0 && sliding_step % 1000000 == 0) {
                             ex = 0.0;
@@ -94,7 +93,7 @@ std::vector<match_result> dat_par_finder(
                         real_t dist = 0.0;
                         size_t j = 0;
 
-                        // Early Abandoning con Z-Normalization on the fly
+                        // Early Abandoning with on the fly Z-Normalization
                         while (j < query_length && dist < thread_best.distance) {
                             real_t val_norm = (X[(idx_circ + 1 + j) % query_length] - mu) / sigma;
                             real_t diff = flat_queries_norm[q_offset + j] - val_norm;
@@ -102,14 +101,14 @@ std::vector<match_result> dat_par_finder(
                             j++;
                         }
 
-                        // Aggiornamento locale
+                        // local update
                         if (dist < thread_best.distance) {
                             thread_best.distance = dist;
                             thread_best.series_id = i;
                             thread_best.start_index = count - query_length + 1;
                         }
 
-                        // Rimozione del valore più vecchio per il passo successivo
+                        // Removing the oldest value for the next step
                         real_t old_val = X[(idx_circ + 1) % query_length];
                         ex -= old_val;
                         ex2 -= old_val * old_val;
@@ -117,8 +116,8 @@ std::vector<match_result> dat_par_finder(
                 }
             }
 
-            // 5. DOUBLE-CHECKED LOCKING MIRATO
-            // Siccome siamo nel ciclo 'q', aggiorniamo solo il best_results di QUESTA query.
+            // 5. DOUBLE-CHECKED LOCKING
+            // Since we are in the 'q' loop, we only update the best_results of this query.
             if (thread_best.distance < best_results[q].distance) {
 #pragma omp critical
                 {
@@ -127,8 +126,8 @@ std::vector<match_result> dat_par_finder(
                     }
                 }
             }
-        } // Fine del ciclo delle query
-    } // FINE DELLA REGIONE PARALLELA (I thread vengono addormentati qui)
+        } // end of query cycle
+    } // end of parallel region
 
     return best_results;
 }
