@@ -18,6 +18,7 @@
 #include "../PARALLEL/headers/mult_par_finder.h"
 #include "../PARALLEL/headers/dat_par_finder.h"
 #include "../PARALLEL/headers/dat_par_finder_opt.h"
+#include "../PARALLEL/headers/dat_par_finder_ext.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -55,7 +56,7 @@ Config parse_arguments(int argc, char* argv[]) {
         else if (arg == "-h" || arg == "--help") {
             cout << "Usage: " << argv[0] << " --dataset <file> --num-queries <N> --query-length <L> [options]\n"
                  << "Options:\n"
-                 << "  --algo <type>     naive, opt, par_wind, mult_par, dat_par, both, all\n"
+                 << "  --algo <type>     naive, opt, par_wind, mult_par, dat_par, dat_par_ext, both, all\n"
                  << "  --quick           Run only 1 iteration (no warm-up, no stats)\n"
                  << "  --skip-data-col   Skip first column (labels)\n";
             exit(0);
@@ -223,6 +224,12 @@ int main(int argc, char* argv[]) {
         if (config.algo == "dat_par_opt" || config.algo == "all") {
             run_experiment("DATA PARALLEL OPT", [&]() {
                 return dat_par_finder_opt(flat_queries, config.query_length, flat_data, data_offsets);
+            });
+        }
+
+        if (config.algo == "dat_par_ext" || config.algo == "all") {
+            run_experiment("DATA PARALLEL EXTREME", [&]() {
+                return dat_par_finder_ext(flat_queries, config.query_length, flat_data, data_offsets);
             });
         }
 
