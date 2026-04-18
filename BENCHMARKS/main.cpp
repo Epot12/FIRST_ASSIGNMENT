@@ -28,6 +28,11 @@ struct Config {
     unsigned int seed = 42;
     bool skip_dataset_first_col = false;
     string algo = "all";
+
+    // Benchmarking parameters (default 7 runs)
+    int total_runs = 7;
+    int warmup_runs = 2;
+    bool quick_mode = false;
 };
 
 Config parse_arguments(int argc, char* argv[]) {
@@ -40,8 +45,18 @@ Config parse_arguments(int argc, char* argv[]) {
         else if (arg == "--seed" && i + 1 < argc) config.seed = std::stoul(argv[++i]);
         else if (arg == "--algo" && i + 1 < argc) config.algo = argv[++i];
         else if (arg == "--skip-data-col") config.skip_dataset_first_col = true;
+            // option for quick tests
+        else if (arg == "--quick") {
+            config.quick_mode = true;
+            config.total_runs = 1;
+            config.warmup_runs = 0;
+        }
         else if (arg == "-h" || arg == "--help") {
-            cout << "Usage: " << argv[0] << " --dataset <file> --num-queries <N> --query-length <L> [options]\n";
+            cout << "Usage: " << argv[0] << " --dataset <file> --num-queries <N> --query-length <L> [options]\n"
+                 << "Options:\n"
+                 << "  --algo <type>     naive, opt, par_wind, mult_par, dat_par, both, all\n"
+                 << "  --quick           Run only 1 iteration (no warm-up, no stats)\n"
+                 << "  --skip-data-col   Skip first column (labels)\n";
             exit(0);
         }
     }
@@ -54,6 +69,14 @@ Config parse_arguments(int argc, char* argv[]) {
 
 // Support function to calculate and print statistics
 void print_stats(const string& metric_name, const vector<double>& values) {
+    if (values.empty()) return;
+
+    // If there is only one value (Quick Mode), print only the one without average/std
+    if (values.size() == 1) {
+        cout << "   - " << left << setw(10) << metric_name << " | Value: " << fixed << setprecision(2) << values[0] << " ms\n";
+        return;
+    }
+
     double min_v = *min_element(values.begin(), values.end());
     double max_v = *max_element(values.begin(), values.end());
     double sum = accumulate(values.begin(), values.end(), 0.0);
@@ -80,6 +103,8 @@ int main(int argc, char* argv[]) {
     cout << "Queries: " << config.num_queries << " | Length: " << config.query_length << "\n";
     cout << "Algorithm Target: " << config.algo << "\n";
     cout << "OpenMP Threads Available: " << omp_get_max_threads() << "\n";
+    if (config.quick_mode) cout << "Mode: QUICK (1 run, no warm-up)\n";
+    else cout << "Mode: PROFESSIONAL (7 runs: 2 warm-up, 5 measured)\n";
     cout << "---------------------------------------------------\n";
 
     try {
@@ -110,64 +135,52 @@ int main(int argc, char* argv[]) {
         cout << "[Prep] Structures initialized in "
              << duration_cast<milliseconds>(end_prep - start_prep).count() << " ms.\n";
         cout << "---------------------------------------------------\n";
-        cout << ">>> EXECUTION RESULTS (7 Runs: 2 Warm-up, 5 Measured) <<<\n\n";
+
+        // Dynamic output based on mode
+        if (config.quick_mode) cout << ">>> EXECUTION RESULTS (Quick Mode) <<<\n\n";
+        else cout << ">>> EXECUTION RESULTS (7 Runs: 2 Warm-up, 5 Measured) <<<\n\n";
 
         // =====================================================================
         // benchmark engine (lambda function)
         // =====================================================================
-        int total_runs = 7;
-        int warmup_runs = 2;
-
         auto run_experiment = [&](const string& algo_name, auto algorithm_logic) {
             vector<double> wall_times;
             vector<double> cpu_times;
             size_t success_count = 0;
 
-            for (int i = 0; i < total_runs; ++i) {
-                // Captures the times
+            for (int i = 0; i < config.total_runs; ++i) {
                 clock_t start_cpu = clock();
                 auto start_wall = high_resolution_clock::now();
 
-                // executing algorithm
                 vector<match_result> results = algorithm_logic();
 
                 auto end_wall = high_resolution_clock::now();
                 clock_t end_cpu = clock();
 
-                // calculating in ms
                 double wall_ms = duration<double, std::milli>(end_wall - start_wall).count();
                 double cpu_ms = 1000.0 * static_cast<double>(end_cpu - start_cpu) / CLOCKS_PER_SEC;
 
-                // Check accuracy only on the first warm-up lap (so as not to affect on subsequent measurements)
                 if (i == 0) {
                     for (size_t q = 0; q < queries.size(); q++) {
                         if (results[q].series_id == queries[q].source_series_id &&
-                            results[q].start_index == queries[q].source_start_idx) {
-                            success_count++;
-                        } else if (results[q].distance < 1e-5) {
-                            success_count++;
-                        }
+                            results[q].start_index == queries[q].source_start_idx) success_count++;
+                        else if (results[q].distance < 1e-5) success_count++;
                     }
                 }
 
-                // Saves the measurements only if we have passed the warm-ups
-                if (i >= warmup_runs) {
+                if (i >= config.warmup_runs) {
                     wall_times.push_back(wall_ms);
                     cpu_times.push_back(cpu_ms);
                 }
             }
 
-            // printing results
             cout << "[*] " << algo_name << " (Accuracy: " << success_count << "/" << queries.size() << ")\n";
             print_stats("Wall Time", wall_times);
             print_stats("CPU Time", cpu_times);
             cout << "\n";
         };
 
-
         // 3. Computing phase (routing to algorithms)
-
-
         if (config.algo == "naive" || config.algo == "all" || config.algo == "both") {
             run_experiment("NAIVE SEQUENTIAL", [&]() {
                 vector<match_result> results(config.num_queries);
