@@ -46,6 +46,9 @@ add_executable(FIRST_ASSIGNMENT
         PARALLEL/src/dat_par_finder.cpp
         PARALLEL/headers/dat_par_finder.h
         BENCHMARKS/main.cpp
+        PARALLEL/src/dat_par_finder_opt.cpp
+        PARALLEL/headers/dat_par_finder_opt.h
+        PARALLEL/headers/dat_par_finder_opt.h
 )
 
 if(OpenMP_CXX_FOUND)
