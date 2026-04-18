@@ -8,7 +8,7 @@ def run_command(command_list, cwd=None, env=None):
     try:
         subprocess.run(command_list, cwd=cwd, check=True, text=True, env=env)
     except subprocess.CalledProcessError as e:
-        print(f"\n[CRITICAL ERROR] Comando failed (code {e.returncode}): {' '.join(command_list)}", file=sys.stderr)
+        print(f"\n[CRITICAL ERROR] Command failed (code {e.returncode}): {' '.join(command_list)}", file=sys.stderr)
         sys.exit(1)
 
 def main():
