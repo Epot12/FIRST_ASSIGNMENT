@@ -17,7 +17,7 @@ DATASETS = {
         "url": "https://raw.githubusercontent.com/tuo_utente/tuo_repo/main/data/bitcoin_close_1m.txt",
         "target_path": "data/bitcoin_close_1m.txt",
         "extract_to": None,
-        "expected_sha256": "4e1a... (hash) ..."
+        "expected_sha256": "bfd5bdb3977ff9c4c299164da584cdf647c91a43e8f7c8c60b6dc16105e25c40"
     }
 }
 
