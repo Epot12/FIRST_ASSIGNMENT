@@ -80,10 +80,6 @@ datasets/*
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-cmake-build-debug/
-build_release/
-data/
-.idea/
 
 # File di output del Profiler (Google Performance Tools)
 *.prof
