@@ -20,6 +20,7 @@
 #include "../PARALLEL/headers/dat_par_finder.h"
 #include "../PARALLEL/headers/dat_par_finder_opt.h"
 #include "../PARALLEL/headers/dat_par_finder_ext.h"
+#include "../PARALLEL/headers/dat_par_finder_ult.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -237,6 +238,12 @@ int main(int argc, char* argv[]) {
         if (config.algo == "dat_par_ext" || config.algo == "all") {
             run_experiment("DATA PARALLEL EXTREME", [&]() {
                 return dat_par_finder_ext(flat_queries, config.query_length, flat_data, data_offsets);
+            });
+        }
+
+        if (config.algo == "dat_par_ult" || config.algo == "all") {
+            run_experiment("DATA PARALLEL ULTRA", [&]() {
+                return dat_par_finder_ult(flat_queries, config.query_length, flat_data, data_offsets);
             });
         }
 
