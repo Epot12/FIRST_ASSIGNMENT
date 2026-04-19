@@ -8,7 +8,7 @@ import sys
 # SHA-256 hash reported below are an example. to be calculated on the real files
 DATASETS = {
     "ucr_archive": {
-        "url": "https://www.cs.ucr.edu/~eamonn/time_series_data_2018/UCRArchive_2018.zip",
+        "url": "https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/UCRArchive_2018.zip", #confirmed link
         "target_path": "data/UCRArchive_2018.zip",
         "extract_to": "data/UCRArchive_2018/",
         "expected_sha256": "8f32... (il tuo hash) ..."
