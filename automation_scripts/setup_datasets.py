@@ -122,7 +122,7 @@ def setup():
         if info["extract_to"] and not os.path.exists(info["extract_to"]):
             print(f"    Extracting {path}...")
             with zipfile.ZipFile(path, 'r') as zip_ref:
-                zip_ref.extractall(info["extract_to"])
+                zip_ref.extractall(info["extract_to"], pwd=b"someone")
 
     # Synthetic Data Management (Idempotent)
     synthetic_path = "data/synthetic_timeseries.txt"
