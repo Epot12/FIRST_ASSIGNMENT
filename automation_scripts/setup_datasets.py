@@ -11,13 +11,13 @@ DATASETS = {
         "url": "https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/UCRArchive_2018.zip", #confirmed link
         "target_path": "data/UCRArchive_2018.zip",
         "extract_to": "data/UCRArchive_2018/",
-        "expected_sha256": "8f32... (il tuo hash) ..."
+        "expected_sha256": "a7163f6edd2b6876d195ab0ee5bcce5ec09873cba75512d35bc64a8a493d9d4a" #hash of the file, to check data consistency
     },
     "bitcoin_data": {
         "url": "https://raw.githubusercontent.com/tuo_utente/tuo_repo/main/data/bitcoin_close_1m.txt",
         "target_path": "data/bitcoin_close_1m.txt",
         "extract_to": None,
-        "expected_sha256": "4e1a... (il tuo hash) ..."
+        "expected_sha256": "4e1a... (hash) ..."
     }
 }
 
