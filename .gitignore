@@ -52,6 +52,7 @@ env/
 !CMakeLists.txt
 *.dat
 *.json
+!data/bitcoin_close_1m.txt
 
 # Ignora archivi compressi scaricati (es. UCR Archive)
 *.zip
@@ -65,6 +66,7 @@ datasets/*
 
 !data/.gitkeep
 !dataset/.gitkeep
+!data/bitcoin_close_1m.txt
 
 # ==========================================
 # 5. OS Specific
@@ -77,7 +79,8 @@ datasets/*
 # Windows
 Thumbs.db
 ehthumbs.db
-Desktop.inicmake-build-debug/
+Desktop.ini
+cmake-build-debug/
 build_release/
 data/
 .idea/
