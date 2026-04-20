@@ -24,7 +24,8 @@ from mockseries.utils import datetime_range
 DATASETS = {"ucr_archive": {
     "url": "https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/UCRArchive_2018.zip", #confirmed link
     "target_path": "data/UCRArchive_2018.zip",
-    "extract_to": "data/UCRArchive_2018/",
+    "extract_to": "data",
+    "check_dir": "data/UCRArchive_2018/CinCECGTorso",
     "expected_sha256": "a7163f6edd2b6876d195ab0ee5bcce5ec09873cba75512d35bc64a8a493d9d4a" #hash of the file, to check data consistency
 }}
 
@@ -120,10 +121,13 @@ def setup():
                 print(f"    [ERROR] Downloading {name} is impossible: {e}")
 
         # Idempotent extraction
-        if info["extract_to"] and not os.path.exists(info["extract_to"]):
-            print(f"    Extracting {path}...")
+        if not os.path.exists(info["check_dir"]):
+            print(f"    Extraction of {path} is running (may take some time)...")
             with zipfile.ZipFile(path, 'r') as zip_ref:
                 zip_ref.extractall(info["extract_to"], pwd=b"someone")
+            print("    [OK] Extraction has been completed.")
+        else:
+            print("    [*] Archive already extracted successfully.")
 
     # Synthetic Data Management (Idempotent)
     synthetic_path = "data/synthetic_timeseries.txt"
@@ -132,7 +136,7 @@ def setup():
     else:
         generate_synthetic_dataset(synthetic_path)
 
-    print("\n[+] Setup complete. All datasets are ready for the C++ Engine.")
+    print("\n[+] Setup completed. All datasets are ready for the C++ Engine.")
 
 if __name__ == "__main__":
     setup()
