@@ -32,6 +32,8 @@ struct Config {
     unsigned int seed = 42;
     bool skip_dataset_first_col = false;
     string algo = "all";
+    size_t limit = 0;       // 0 means "read all the dataset"
+    int chunk_size = 0;     // 0 means "let OpenMP decide"
 
     // Benchmarking parameters (default 7 runs)
     int total_runs = 7;
@@ -49,6 +51,8 @@ Config parse_arguments(int argc, char* argv[]) {
         else if (arg == "--seed" && i + 1 < argc) config.seed = std::stoul(argv[++i]);
         else if (arg == "--algo" && i + 1 < argc) config.algo = argv[++i];
         else if (arg == "--skip-data-col") config.skip_dataset_first_col = true;
+        else if (arg == "--limit" && i + 1 < argc) config.limit = std::stoull(argv[++i]);
+        else if (arg == "--chunk" && i + 1 < argc) config.chunk_size = std::stoi(argv[++i]);
             // option for quick tests
         else if (arg == "--quick") {
             config.quick_mode = true;
@@ -60,6 +64,8 @@ Config parse_arguments(int argc, char* argv[]) {
                  << "Options:\n"
                  << "  --algo <type>     naive, opt, par_wind, mult_par, mult_par_opt, dat_par, dat_par_ext, both, all\n"
                  << "  --quick           Run only 1 iteration (no warm-up, no stats)\n"
+                 << "  --limit <N>       Limit dataset to N series (for Gustafson's Weak Scaling)\n"
+                 << "  --chunk <N>       Set OpenMP chunk size (for Granularity Profiling)\n"
                  << "  --skip-data-col   Skip first column (labels)\n";
             exit(0);
         }
@@ -115,6 +121,9 @@ int main(int argc, char* argv[]) {
         // 1. DATA I/O PHASE
         auto start_io = high_resolution_clock::now();
         auto database = DataLoader::load(config.dataset_path, config.skip_dataset_first_col);
+        if (config.limit > 0 && config.limit < database.size()) {
+            database.resize(config.limit);
+        }
         auto end_io = high_resolution_clock::now();
         cout << "[I/O] Dataset loaded: " << database.size() << " series in "
              << duration_cast<milliseconds>(end_io - start_io).count() << " ms.\n";
@@ -183,6 +192,11 @@ int main(int argc, char* argv[]) {
             print_stats("CPU Time", cpu_times);
             cout << "\n";
         };
+
+        if (config.chunk_size > 0) {
+            omp_set_schedule(omp_sched_dynamic, config.chunk_size);
+            cout << "[Runtime] OpenMP schedule forced to dynamic, chunk_size=" << config.chunk_size << "\n\n";
+        }
 
         // 3. Computing phase (routing to algorithms)
         if (config.algo == "naive" || config.algo == "all" || config.algo == "both") {
