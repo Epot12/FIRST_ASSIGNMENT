@@ -1,124 +1,135 @@
-import subprocess
-import re
 import os
 import sys
+import subprocess
 import argparse
-import matplotlib.pyplot as plt
-import seaborn as sns
+import shutil
 from pathlib import Path
 
 
-# GENERAL SETUP
+# setting
 
-EXEC_PATH = "./build_release/FIRST_ASSIGNMENT"
 DATASET_PATH = "./data/UCRArchive_2018/CinCECGTorso/CinCECGTorso_TEST.tsv"
-NUM_QUERIES = 10
-QUERY_LENGTH = 128
+NUM_QUERIES = "10"
+QUERY_LENGTH = "128"
 SKIP_COL = True
 
-PLOTS_DIR = Path("./plots")
-PLOTS_DIR.mkdir(exist_ok=True)
 
-# Seaborn graphic settings
-sns.set_theme(style="whitegrid", context="paper", font_scale=1.3)
-COLORS = sns.color_palette("husl", 8)
+# GPERFTOOLS PATHS
 
-# execution
+HOME_DIR = os.path.expanduser("~")
+PPROF_PATH = os.path.join(HOME_DIR, "gperftools", "bin", "pprof")
+GPERFTOOLS_LIB = os.path.join(HOME_DIR, "gperftools", "lib")
+GPERFTOOLS_PREFIX = os.path.join(HOME_DIR, "gperftools")
 
-def run_cpp_benchmark(algo: str, threads: int, schedule: str = "dynamic", chunk: int = 0) -> float:
-    """Runs the C++ binary by injecting the OMP_SCHEDULE variable."""
+BUILD_DIR = "build_profiling"
+EXEC_PATH = f"./{BUILD_DIR}/FIRST_ASSIGNMENT"
+PROF_RAW_FILE = "whole.prof"
+OUT_DIR = Path("./profiling_reports")
+
+def run_command(command_list, cwd=None, env=None, stdout=None):
+    """Executes a system command and blocks on error."""
+    try:
+        subprocess.run(command_list, cwd=cwd, check=True, text=True, env=env, stdout=stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"\n[CRITICAL ERROR] Command failed: {' '.join(command_list)}", file=sys.stderr)
+        sys.exit(1)
+
+def build_for_profiling():
+    """Compile the project with flags for gperftools."""
+    print("\n" + "="*50)
+    print(" PHASE 1: PROFILING COMPILATION (RelWithDebInfo)")
+    print("="*50)
+
+    if os.path.exists(BUILD_DIR):
+        shutil.rmtree(BUILD_DIR)
+    os.makedirs(BUILD_DIR, exist_ok=True)
+
+    # CMake command to configure profiling
+    cmake_cmd = [
+        "cmake", "-S", ".", "-B", BUILD_DIR,
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DENABLE_PROFILING=ON",
+        f"-DCMAKE_PREFIX_PATH={GPERFTOOLS_PREFIX}"
+    ]
+    run_command(cmake_cmd)
+
+    # Compilation
+    print("\n>>> Make execution...")
+    run_command(["cmake", "--build", BUILD_DIR])
+    print("[V] Compilation completed successfully.")
+
+def execute_and_profile(algo: str, threads: int):
+    """Runs the binary generating the raw .prof file."""
+    print("\n" + "="*50)
+    print(f" STEP 2: RUNNING WITH GPERFTOOLS ({algo.upper()})")
+    print("="*50)
+
     if not os.path.exists(EXEC_PATH):
-        print(f"\n[ERRORE] Executable not found in {EXEC_PATH}!")
+        print(f"\n[ERROR] Executable not found in {EXEC_PATH}!")
         sys.exit(1)
 
     cmd = [
         EXEC_PATH,
         "--dataset", DATASET_PATH,
-        "--num-queries", str(NUM_QUERIES),
-        "--query-length", str(QUERY_LENGTH),
+        "--num-queries", NUM_QUERIES,
+        "--query-length", QUERY_LENGTH,
         "--algo", algo
     ]
+    if SKIP_COL:
+        cmd.append("--skip-data-col")
 
-    # OpenMP string formatting: e.g. "static,64"
-    schedule_str = schedule if chunk == 0 else f"{schedule},{chunk}"
-
+    # Environment variable injection for gperftools and OpenMP
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(threads)
-    env["OMP_SCHEDULE"] = schedule_str
+    env["OMP_SCHEDULE"] = "dynamic"  # Standardized profiling on dynamic
 
-    print(f"  [RUN] Algo: {algo:<15} | Sched: {schedule_str:<12} | Threads: {threads}")
+    # Fundamental variables for gperftools
+    env["LD_LIBRARY_PATH"] = GPERFTOOLS_LIB
+    env["CPUPROFILE"] = PROF_RAW_FILE
 
-    try:
-        result = subprocess.run(cmd, env=env, capture_output=True, text=True, check=True)
-        match = re.search(r"\[PYTHON_PARSE\] Wall Time_MEAN:\s+([\d.]+)", result.stdout)
-        if match:
-            return float(match.group(1))
-        else:
-            print("[ERROR] Parsing failed for the algorithm", algo)
-            return 0.0
-    except subprocess.CalledProcessError as e:
-        print(f"[CRITICAL ERROR] Crash during the execution of {algo}!")
-        return 0.0
+    print(f"  [RUN] Algo: {algo:<15} | Threads: {threads}")
+    run_command(cmd, env=env)
+    print(f"[V] Execution finished. Generated raw file: {PROF_RAW_FILE}")
 
+def generate_report(algo: str):
+    """Converts the raw .prof file into a readable text report."""
+    print("\n" + "="*50)
+    print(" PHASE 3: GENERATION OF PPROF REPORT")
+    print("="*50)
 
-# PROFILING logic
+    OUT_DIR.mkdir(exist_ok=True)
+    report_filename = OUT_DIR / f"profiling_{algo}.txt"
 
-def perform_profiling(algos_to_test, threads):
-    print("\n" + "="*65)
-    print(f" PROFILING OPENMP: {', '.join(algos_to_test).upper()}")
-    print("="*65)
+    if not os.path.exists(PROF_RAW_FILE):
+        print(f"\n[ERROR] File {PROF_RAW_FILE} has not been generated.")
+        sys.exit(1)
 
-    schedules = ["static", "dynamic", "guided"]
-    chunks = [1, 16, 64, 256, 1024, 4096]
+    # Command: pprof --text ./executable whole.prof > report.txt
+    pprof_cmd = [PPROF_PATH, "--text", EXEC_PATH, PROF_RAW_FILE]
 
-    for algo in algos_to_test:
-        print(f"\n>>> Analyzing the impact of balancing for: {algo}")
-        results = {sched: [] for sched in schedules}
+    with open(report_filename, "w") as out_file:
+        run_command(pprof_cmd, stdout=out_file)
 
-        for sched in schedules:
-            print(f"    - Testing schedule({sched})...")
-            for c in chunks:
-                time = run_cpp_benchmark(algo, threads, schedule=sched, chunk=c)
-                results[sched].append(time)
+    # cleaning raw file
+    os.remove(PROF_RAW_FILE)
+    print(f" Profiling completed! Analysis saved in: {report_filename}\n")
 
-        # plot generation
-        plt.figure(figsize=(10, 6))
-        for i, sched in enumerate(schedules):
-            plt.semilogx(chunks, results[sched], marker='D', linewidth=2.5,
-                         color=COLORS[i], label=f"schedule({sched})")
-
-        plt.xlabel('Chunk Size (Logarithmic scale)', fontweight='bold')
-        plt.ylabel('Wall Time (ms)', fontweight='bold')
-        plt.title(f"Load Balancing Strategies: {algo} ({threads} Threads)", fontweight='bold')
-        plt.xticks(chunks, labels=[str(c) for c in chunks])
-        plt.grid(True, which="both", ls="--", alpha=0.5)
-        plt.legend()
-        plt.tight_layout()
-
-        filename = f'Profiling_Chunks_{algo}.pdf'
-        plt.savefig(PLOTS_DIR / filename, format='pdf', bbox_inches='tight')
-        plt.close()
-        print(f"\n[V] Plot saved successfully: {PLOTS_DIR}/{filename}")
-
-# ENTRY POINT
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="HPC Micro-Benchmark: OpenMP Scheduling Profiler")
-
-    # using the two defaults if --algo is not passed
-    parser.add_argument("--algo", type=str, nargs='*',
-                        default=["dat_par_ext", "dat_par_ult"],
-                        help="Algorithm(s) to profile (e.g. naive, dat_par_opt)")
-
+    parser = argparse.ArgumentParser(description="HPC gperftools Profiler")
+    parser.add_argument("--algo", type=str, required=True,
+                        help="Algorithm to profile (e.g. dat_par_ext, mult_par)")
     parser.add_argument("--threads", type=int, default=8,
-                        help="Number of threads to use for profiling (default: 8)")
+                        help="Number of OpenMP threads (default: 8)")
+    parser.add_argument("--no-build", action="store_true",
+                        help="Skip the compilation if you already have the build_profiling folder")
 
     args = parser.parse_args()
 
-    print("=====================================================")
-    print(" AUTOMATED MICRO-BENCHMARK SUITE: PROFILING")
-    print("=====================================================")
+    if not args.no_build:
+        build_for_profiling()
+    else:
+        print("\n[SKIP] Compilation phase skipped by flag --no-build.")
 
-    perform_profiling(args.algo, args.threads)
-
-    print("\n ALL PROFILING OPERATIONS ARE COMPLETED!")
+    execute_and_profile(args.algo, args.threads)
+    generate_report(args.algo)
