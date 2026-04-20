@@ -1,3 +1,8 @@
+#ifdef USE_PROFILER
+#include <gperftools/profiler.h>
+#endif
+
+
 #include <iostream>
 #include <vector>
 #include <string>
