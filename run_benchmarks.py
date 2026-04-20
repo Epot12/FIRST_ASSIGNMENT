@@ -3,6 +3,7 @@ import re
 import os
 import sys
 import time
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
@@ -19,16 +20,18 @@ DATASETS = {
     "Synthetic": "./data/synthetic_timeseries.txt"
 }
 
-NUM_QUERIES = 20
-QUERY_LENGTH = 128
-MAX_PHYSICAL_CORES = 4
-
 PLOTS_DIR = Path("./plots")
-PLOTS_DIR.mkdir(exist_ok=True)
+PLOTS_DIR.mkdir(exist_ok=True) # idempotent operation: creates only if it doesn't exist
 
-# graphic themes
+TABLES_DIR = Path("./tables")
+TABLES_DIR.mkdir(exist_ok=True)
+
 sns.set_theme(style="whitegrid", context="paper", font_scale=1.4)
 COLORS = sns.color_palette("viridis", 6)
+
+# default variables
+DEFAULT_NUM_QUERIES = 20
+DEFAULT_QUERY_LENGTH = 128
 
 # algorithms: key (C++) -> Label (plot)
 # optimized sequential is baseline reference
@@ -63,7 +66,9 @@ def rebuild_for_benchmark():
 
 # Execution engine
 
-def run_cpp_benchmark(algo: str, dataset_path: str, threads: int) -> float:
+def run_cpp_benchmark(algo: str, dataset_path: str, threads: int,
+                      num_queries: int = DEFAULT_NUM_QUERIES,
+                      query_length: int = DEFAULT_QUERY_LENGTH) -> float:
     """Runs the benchmark and captures the average Wall Time."""
     if not os.path.exists(dataset_path):
         print(f"[ERROR] Dataset not found: {dataset_path}")
@@ -72,8 +77,8 @@ def run_cpp_benchmark(algo: str, dataset_path: str, threads: int) -> float:
     cmd = [
         str(EXEC_PATH),
         "--dataset", dataset_path,
-        "--num-queries", str(NUM_QUERIES),
-        "--query-length", str(QUERY_LENGTH),
+        "--num-queries", str(num_queries),
+        "--query-length", str(query_length),
         "--algo", algo
     ]
 
@@ -175,9 +180,72 @@ def phase2_strong_scaling(target_ds: str):
     plt.savefig(PLOTS_DIR / f'Scaling_{target_ds}.pdf')
     plt.close()
 
-# ==========================================
+
+# PHASE 5: DEEP EXPLORATION (SENSITIVITY ANALYSIS)
+
+def phase5_deep_exploration(target_ds: str, deep_exploration: bool = True):
+    if not deep_exploration:
+        print("\n  [SKIP] Deep Exploration deactivated by flag.")
+        return
+
+    print("\n" + "="*60)
+    print(f" PHASE 5: SENSITIVITY ANALYSIS ON {target_ds}")
+    print("="*60)
+
+    ds_path = DATASETS[target_ds]
+    # Analyzing best algorithm
+    target_algo = "dat_par_ult"
+    threads = MAX_PHYSICAL_CORES
+
+    queries_grid = [10, 50, 100]
+    lengths_grid = [64, 128, 256]
+
+    results_matrix = np.zeros((len(queries_grid), len(lengths_grid)))
+
+    print(f"\n--- Generating Heatmap for: {ALGOS_TO_TEST[target_algo]} ---")
+
+    for i, num_q in enumerate(queries_grid):
+        for j, q_len in enumerate(lengths_grid):
+            print(f"  -> Testing: Queries={num_q:>3} | Length={q_len:>3}...", end="", flush=True)
+
+            t_mean = run_cpp_benchmark(target_algo, ds_path, threads,
+                                       num_queries=num_q, query_length=q_len)
+
+            results_matrix[i, j] = t_mean
+            print(f" Time: {t_mean:.2f} ms")
+
+    # Idempotent Table Saving
+    table_file = TABLES_DIR / f'Table_Sensitivity_{target_ds}.txt'
+    with open(table_file, 'w') as f:
+        f.write(f"SENSITIVITY ANALYSIS - {target_ds} ({ALGOS_TO_TEST[target_algo]} at {threads} Threads)\n")
+        f.write("Columns: Query Length (64, 128, 256) | Rows: Number of Queries (10, 50, 100)\n\n")
+        # Header columns
+        f.write("Q \\ L\t" + "\t".join([str(l) for l in lengths_grid]) + "\n")
+        f.write("-" * 40 + "\n")
+        for i, num_q in enumerate(queries_grid):
+            # row: num query and then the values
+            row_str = f"{num_q}\t" + "\t".join([f"{val:.2f}" for val in results_matrix[i, :]])
+            f.write(row_str + "\n")
+    print(f"[V] Text table saved in: {table_file}")
+
+    # Plotting Heatmap
+    plt.figure(figsize=(8, 6))
+
+    ax = sns.heatmap(results_matrix, annot=True, fmt=".1f",
+                     xticklabels=lengths_grid, yticklabels=queries_grid,
+                     cmap="rocket_r", cbar_kws={'label': 'Wall Time (ms)'})
+
+    plt.title(f"Workload Sensitivity: {ALGOS_TO_TEST[target_algo]}\nDataset: {target_ds} ({threads} Threads)", fontsize=14, pad=15)
+    plt.xlabel("Query Length (Timesteps)", fontweight='bold')
+    plt.ylabel("Number of Queries", fontweight='bold')
+
+    plt.tight_layout()
+    # Idempotent saving and automatic overwriting in PDF vector format
+    plt.savefig(PLOTS_DIR / f'Phase5_DeepExploration_{target_ds}.pdf', format='pdf', bbox_inches='tight')
+    plt.close()
+    print(f"[V] Heatmap PDF saved in: {PLOTS_DIR / f'Phase5_DeepExploration_{target_ds}.pdf'}")
+
 # MAIN EXECUTION
-# ==========================================
 
 if __name__ == "__main__":
     # ensuring executable exists and it is cleaned
@@ -189,7 +257,10 @@ if __name__ == "__main__":
     # Phase 2: Amdahl's law on the most significant dataset
     phase2_strong_scaling("StarLightCurves")
 
+    phase5_deep_exploration("StarLightCurves", deep_exploration=True)
+
     print("\n" + "="*60)
     print(" EVALUATION SUITE COMPLETED")
-    print(f" Results saved in: {PLOTS_DIR.absolute()}")
+    print(f" Plots saved in: {PLOTS_DIR.absolute()}")
+    print(f" Tables saved in: {TABLES_DIR.absolute()}")
     print("="*60)
