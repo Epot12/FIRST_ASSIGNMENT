@@ -3,6 +3,7 @@ import re
 import os
 import sys
 import time
+import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -48,6 +49,9 @@ ALGOS_TO_TEST = {
 def rebuild_for_benchmark():
     """Ensures that the binary is compiled without profilers for pure measurements."""
     print("\n[BUILD] Compilation in Pure Release mode (Zero Overhead)...")
+    if BUILD_DIR.exists():
+        print("  -> Removing old build folder...")
+        shutil.rmtree(BUILD_DIR)
     BUILD_DIR.mkdir(exist_ok=True)
 
     cmake_cmd = [
