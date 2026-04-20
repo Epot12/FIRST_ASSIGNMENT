@@ -30,25 +30,35 @@ def main():
 
     parser.add_argument("--profile", action="store_true", help="Enable Profiling")
     parser.add_argument("--threads", type=str, default="8", help="OpenMP threads")
+    parser.add_argument("--limit", type=str, default="0", help="Limit rows for Weak Scaling")
+    parser.add_argument("--chunk", type=str, default="0", help="OpenMP Chunk Size")
+    parser.add_argument("--no-build", action="store_true", help="Skip CMake clean and build phase")
+    parser.add_argument("--no-vec", action="store_true", help="Disable SIMD Vectorization")
 
     args = parser.parse_args()
+    build_dir = "build_release"
 
     # Clean Build
-    build_dir = "build_release"
-    if os.path.exists(build_dir):
-        shutil.rmtree(build_dir)
-    os.makedirs(build_dir, exist_ok=True)
+    # BUILD PHASE (executed only if --no-build is not passed)
+    if not args.no_build:
+        if os.path.exists(build_dir):
+            shutil.rmtree(build_dir)
+        os.makedirs(build_dir, exist_ok=True)
 
-    build_env = os.environ.copy()
-    if args.profile:
-        run_command(["cmake", "-DCMAKE_BUILD_TYPE=RelWithDebInfo", ".."], cwd=build_dir, env=build_env)
-    else:
-        # massive optimizations for benchmarking
+        build_env = os.environ.copy()
         build_env["CC"], build_env["CXX"] = "clang", "clang++"
-        build_env["CXXFLAGS"] = "-O3 -march=native -ffast-math"
-        run_command(["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."], cwd=build_dir, env=build_env)
 
-    run_command(["cmake", "--build", "."], cwd=build_dir, env=build_env)
+        # vectorization management
+        if args.no_vec:
+            # -O3 but we explicitly disable the use of AVX/SSE registers and vectorization
+            build_env["CXXFLAGS"] = "-O3 -fno-vectorize -fno-slp-vectorize -mno-avx -mno-sse"
+            print("[BUILD] Compilation with VECTORIZATION DISABLED.")
+        else:
+            build_env["CXXFLAGS"] = "-O3 -march=native -ffast-math"
+            print("[BUILD] Compilation with MASSIVE VECTORIZATION.")
+
+        run_command(["cmake", "-DCMAKE_BUILD_TYPE=Release", ".."], cwd=build_dir, env=build_env)
+        run_command(["cmake", "--build", "."], cwd=build_dir, env=build_env)
 
     # searching binary
     possible_paths = [os.path.join(build_dir, "FIRST_ASSIGNMENT"), os.path.join(build_dir, "Release", "FIRST_ASSIGNMENT.exe")]
@@ -69,16 +79,19 @@ def main():
     ]
 
     # Inserts optional flags
-    if args.skip_col:
-        run_args.append("--skip-data-col")
+    if args.skip_col: run_args.append("--skip-data-col")
+    if args.quick: run_args.append("--quick")
 
-    # Passes the --quick flag to C++ if it was passed to Python
-    if args.quick:
-        run_args.append("--quick")
+    # passing parameters to C++
+    if int(args.limit) > 0: run_args.extend(["--limit", args.limit])
+    if int(args.chunk) > 0: run_args.extend(["--chunk", args.chunk])
 
     current_env = os.environ.copy()
     current_env["OMP_NUM_THREADS"] = args.threads
-    current_env["OMP_SCHEDULE"] = "dynamic"
+
+    # If Python Master has not set OMP_SCHEDULE externally, we use dynamic by default
+    if "OMP_SCHEDULE" not in current_env:
+        current_env["OMP_SCHEDULE"] = "dynamic"
 
     if args.profile:
         print(f"\n>>> PROFILING: {args.algo.upper()} <<<")
