@@ -83,7 +83,8 @@ def generate_synthetic_dataset(output_path):
     # Saving data in pure text format for C++
     with open(output_path, "w") as f:
         for val in ts_values:
-            f.write(f"{val}\n")
+            f.write(f"{val}\t") # uses tab instead of line break
+        f.write("\n")
 
     print(f"    [OK] Synthetic dataset saved in {output_path} ({len(ts_values)} timesteps).")
 
