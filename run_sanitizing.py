@@ -103,6 +103,9 @@ def execute_sanitizer(algo: str, threads: int, sanitizer_type: str):
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(threads)
     env["OMP_SCHEDULE"] = "dynamic"
+    env["OMP_TOOL"] = "disabled"
+    env["TSAN_OPTIONS"] = "ignore_noninstrumented_modules=1"
+    env["ASAN_OPTIONS"] = "protect_shadow_gap=0"
 
     try:
         subprocess.run(cmd, env=env, check=True)
