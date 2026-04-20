@@ -169,17 +169,37 @@ int main(int argc, char* argv[]) {
             size_t success_count = 0;
 
             for (int i = 0; i < config.total_runs; ++i) {
+
+                // [1. START PROFILING] - after warmup
+#ifdef USE_PROFILER
+                if (i == config.warmup_runs) {
+                    // It is activated exactly at the beginning of the first "official" run
+                    cout << "   >>> [PROFILER] Registration started for " << algo_name << "...\n";
+                    ProfilerStart("whole.prof");
+                }
+#endif
+
                 clock_t start_cpu = clock();
                 auto start_wall = high_resolution_clock::now();
 
+                // algorithm
                 vector<match_result> results = algorithm_logic();
 
                 auto end_wall = high_resolution_clock::now();
                 clock_t end_cpu = clock();
 
+                // [2. STOP PROFILING] - Exactly after last run
+#ifdef USE_PROFILER
+                if (i == config.total_runs - 1) {
+                    ProfilerStop();
+                    cout << "   >>> [PROFILER] Registration completed.\n";
+                }
+#endif
+
                 double wall_ms = duration<double, std::milli>(end_wall - start_wall).count();
                 double cpu_ms = 1000.0 * static_cast<double>(end_cpu - start_cpu) / CLOCKS_PER_SEC;
 
+                // calculating accuracy only on first run
                 if (i == 0) {
                     for (size_t q = 0; q < queries.size(); q++) {
                         if (results[q].series_id == queries[q].source_series_id &&
