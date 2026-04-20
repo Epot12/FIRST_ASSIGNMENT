@@ -14,6 +14,9 @@ cmake-build-*/
 build/
 out/
 build_release/
+build_profiling/
+build_sanitizers/
+profiling_reports/
 
 # Ignora i file oggetto e gli eseguibili compilati
 *.o
