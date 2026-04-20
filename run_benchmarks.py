@@ -30,12 +30,20 @@ sns.set_theme(style="whitegrid", context="paper", font_scale=1.3)
 COLORS = sns.color_palette("husl", 8)
 
 ALGOS_TO_TEST = {
-    "naive": "Sequential Baseline",
-    "mult_par": "Query Parallel (Locks)",
-    "dat_par": "Data Parallel (Base)",
-    "dat_par_ext": "Data Parallel (SIMD)",
-    "dat_par_ult": "Data Parallel (Lock-Free)"
+    "opt": "Optimized Sequential (Baseline)",
+    "mult_par": "Query Parallel",
+    "dat_par": "Data Parallel",
+    "dat_par_ext": "Data Parallel SIMD",
+    "dat_par_ult": "Data Parallel Lock-Free"
 }
+
+
+sequential_time = run_cpp_benchmark("opt", ds_path, 1)
+
+for i, (algo, label) in enumerate(ALGOS_TO_TEST.items()):
+    if algo == "opt": continue # Non plottare lo speedup di se stesso
+    speedups = [sequential_time / time for time in results[algo]]
+    plt.plot(threads_list, speedups, ...)
 
 # ==========================================
 # MOTORE DI ESECUZIONE (Ora accetta il dataset come parametro)
