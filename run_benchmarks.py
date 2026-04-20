@@ -33,6 +33,8 @@ COLORS = sns.color_palette("viridis", 6)
 # default variables
 DEFAULT_NUM_QUERIES = 20
 DEFAULT_QUERY_LENGTH = 128
+MAX_PHYSICAL_CORES = 4
+MAX_LOGICAL_CORES = MAX_PHYSICAL_CORES * 2
 
 # algorithms: key (C++) -> Label (plot)
 # optimized sequential is baseline reference
@@ -115,7 +117,7 @@ def phase1_raw_performance():
 
         for algo, label in ALGOS_TO_TEST.items():
             # sequential baseline runs at 1 thread, the others at maximum power
-            t = 1 if algo == "opt" else MAX_PHYSICAL_CORES
+            t = 1 if algo == "opt" else MAX_LOGICAL_CORES
             wall_time = run_cpp_benchmark(algo, ds_path, t)
 
             times.append(wall_time)
@@ -132,7 +134,7 @@ def phase1_raw_performance():
                      f'{yval:.1f}ms', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
         plt.ylabel('Execution Time (ms) - Lower is Better', fontweight='bold')
-        plt.title(f"HPC Performance: {ds_name} (Threads: {MAX_PHYSICAL_CORES})", fontsize=16, pad=20)
+        plt.title(f"HPC Performance: {ds_name} (Threads: {MAX_LOGICAL_CORES})", fontsize=16, pad=20)
         plt.tight_layout()
         plt.savefig(PLOTS_DIR / f'Perf_{ds_name}.pdf')
         plt.close()
@@ -147,7 +149,11 @@ def phase2_strong_scaling(target_ds: str):
     print("="*60)
 
     ds_path = DATASETS[target_ds]
-    threads_list = [1, 2, 4, 8]
+    threads_list = []
+    current_t = 1
+    while current_t <= MAX_LOGICAL_CORES:
+        threads_list.append(current_t)
+        current_t *= 2
 
     # time of the best sequential algorithm (Baseline)
     t_sequential = run_cpp_benchmark("opt", ds_path, 1)
@@ -199,7 +205,7 @@ def phase5_deep_exploration(target_ds: str, deep_exploration: bool = True):
     ds_path = DATASETS[target_ds]
     # Analyzing best algorithm
     target_algo = "dat_par_ult"
-    threads = MAX_PHYSICAL_CORES
+    threads = MAX_LOGICAL_CORES
 
     queries_grid = [10, 50, 100]
     lengths_grid = [64, 128, 256]
