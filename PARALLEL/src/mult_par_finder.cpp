@@ -23,7 +23,7 @@ std::vector<match_result> mult_par_finder(
     std::vector<real_t> flat_queries_norm(flat_queries.size());
 
     // Parallel query computation
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(runtime)
     for (size_t q = 0; q < num_queries; q++) {
         size_t offset = q * query_length;
         // passing the starting address of the query and its length
