@@ -62,11 +62,26 @@ if(OpenMP_CXX_FOUND)
     target_link_libraries(FIRST_ASSIGNMENT PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
-find_library(PROFILER_LIB profiler)
+# ==========================================
+# profiling management
+# ==========================================
+# creating option that will be activated by python using -DENABLE_PROFILING=ON
+option(ENABLE_PROFILING "Enables gperftools CPU profiling" OFF)
 
-if(PROFILER_LIB)
-    message(STATUS ">>> Profiler library found. Linking to FIRST_ASSIGNMENT <<<")
-    target_link_libraries(FIRST_ASSIGNMENT PUBLIC ${PROFILER_LIB})
+if(ENABLE_PROFILING)
+    message(STATUS ">>> Compilation with INCLUDED PROFILER <<<")
+
+    # this line tells C++ compiler to switch on #ifdef
+    target_compile_definitions(FIRST_ASSIGNMENT PRIVATE USE_PROFILER)
+
+    # searching and linking the library ONLY if profiling is active
+    find_library(PROFILER_LIB profiler)
+    if(PROFILER_LIB)
+        message(STATUS ">>> Profiler library found. Linking to FIRST_ASSIGNMENT <<<")
+        target_link_libraries(FIRST_ASSIGNMENT PRIVATE ${PROFILER_LIB})
+    else()
+        message(WARNING "Profiler library not found. Install gperftools.")
+    endif()
 else()
-    message(WARNING "Profiler library not found. Install gperftools if you want to profile.")
+    message(STATUS ">>> Compilation for PURE PERFORMANCE (Zero Overhead) <<<")
 endif()

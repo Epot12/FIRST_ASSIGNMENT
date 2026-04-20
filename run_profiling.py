@@ -6,17 +6,13 @@ import shutil
 import platform
 from pathlib import Path
 
-
 # setting
-
 DATASET_PATH = "./data/UCRArchive_2018/CinCECGTorso/CinCECGTorso_TEST.tsv"
 NUM_QUERIES = "10"
 QUERY_LENGTH = "128"
 SKIP_COL = True
 
-
 # GPERFTOOLS PATHS
-
 PPROF_PATH = "/usr/bin/google-pprof"
 GPERFTOOLS_LIB = "/usr/lib/x86_64-linux-gnu"
 
@@ -46,7 +42,8 @@ def build_for_profiling():
     # CMake command to configure profiling
     cmake_cmd = [
         "cmake", "-S", ".", "-B", BUILD_DIR,
-        "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DENABLE_PROFILING=ON"  # to activate ifdef in C++
     ]
     run_command(cmake_cmd)
 
@@ -75,22 +72,10 @@ def execute_and_profile(algo: str, threads: int):
     if SKIP_COL:
         cmd.append("--skip-data-col")
 
-    # Environment variable injection for gperftools and OpenMP
+    # Environment variable injection for OpenMP
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(threads)
-    env["OMP_SCHEDULE"] = "dynamic"  # Standardized profiling on dynamic
-
-    # Fundamental variables for gperftools
-    env["CPUPROFILE"] = PROF_RAW_FILE
-
-    # injection
-    current_os = platform.system()
-    if current_os == "Linux":
-        env["LD_PRELOAD"] = os.path.join(GPERFTOOLS_LIB, "libprofiler.so.0")
-    elif current_os == "Darwin": # Python name for macOS
-        env["DYLD_INSERT_LIBRARIES"] = os.path.join(GPERFTOOLS_LIB, "libprofiler.dylib")
-    else:
-        print(f"\n[WARNING] Profiler runtime injection is not configured for OS: {current_os}")
+    env["OMP_SCHEDULE"] = "dynamic"
 
     print(f"  [RUN] Algo: {algo:<15} | Threads: {threads}")
     run_command(cmd, env=env)
