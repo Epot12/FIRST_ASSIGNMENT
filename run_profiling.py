@@ -3,6 +3,7 @@ import sys
 import subprocess
 import argparse
 import shutil
+import platform
 from pathlib import Path
 
 
@@ -16,10 +17,8 @@ SKIP_COL = True
 
 # GPERFTOOLS PATHS
 
-HOME_DIR = os.path.expanduser("~")
-PPROF_PATH = os.path.join(HOME_DIR, "gperftools", "bin", "pprof")
-GPERFTOOLS_LIB = os.path.join(HOME_DIR, "gperftools", "lib")
-GPERFTOOLS_PREFIX = os.path.join(HOME_DIR, "gperftools")
+PPROF_PATH = "/usr/bin/google-pprof"
+GPERFTOOLS_LIB = "/usr/lib/x86_64-linux-gnu"
 
 BUILD_DIR = "build_profiling"
 EXEC_PATH = f"./{BUILD_DIR}/FIRST_ASSIGNMENT"
@@ -47,9 +46,7 @@ def build_for_profiling():
     # CMake command to configure profiling
     cmake_cmd = [
         "cmake", "-S", ".", "-B", BUILD_DIR,
-        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
-        "-DENABLE_PROFILING=ON",
-        f"-DCMAKE_PREFIX_PATH={GPERFTOOLS_PREFIX}"
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
     ]
     run_command(cmake_cmd)
 
@@ -84,8 +81,16 @@ def execute_and_profile(algo: str, threads: int):
     env["OMP_SCHEDULE"] = "dynamic"  # Standardized profiling on dynamic
 
     # Fundamental variables for gperftools
-    env["LD_LIBRARY_PATH"] = GPERFTOOLS_LIB
     env["CPUPROFILE"] = PROF_RAW_FILE
+
+    # injection
+    current_os = platform.system()
+    if current_os == "Linux":
+        env["LD_PRELOAD"] = os.path.join(GPERFTOOLS_LIB, "libprofiler.so.0")
+    elif current_os == "Darwin": # Python name for macOS
+        env["DYLD_INSERT_LIBRARIES"] = os.path.join(GPERFTOOLS_LIB, "libprofiler.dylib")
+    else:
+        print(f"\n[WARNING] Profiler runtime injection is not configured for OS: {current_os}")
 
     print(f"  [RUN] Algo: {algo:<15} | Threads: {threads}")
     run_command(cmd, env=env)
@@ -102,7 +107,7 @@ def generate_report(algo: str):
 
     if not os.path.exists(PROF_RAW_FILE):
         print(f"\n[ERROR] File {PROF_RAW_FILE} has not been generated.")
-        sys.exit(1)
+        return
 
     # Command: pprof --text ./executable whole.prof > report.txt
     pprof_cmd = [PPROF_PATH, "--text", EXEC_PATH, PROF_RAW_FILE]
