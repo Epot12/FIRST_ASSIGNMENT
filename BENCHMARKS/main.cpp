@@ -101,6 +101,8 @@ void print_stats(const string& metric_name, const vector<double>& values) {
          << "Std: " << setw(6) << std_dev << " ms | "
          << "Min: " << setw(6) << min_v << " ms | "
          << "Max: " << setw(6) << max_v << " ms\n";
+
+    cout << "   [PYTHON_PARSE] " << metric_name << "_MEAN: " << fixed << setprecision(4) << mean << "\n";
 }
 
 int main(int argc, char* argv[]) {
