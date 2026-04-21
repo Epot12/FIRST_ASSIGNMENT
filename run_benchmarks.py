@@ -40,6 +40,7 @@ MAX_LOGICAL_CORES = MAX_PHYSICAL_CORES * 2
 # algorithms: key (C++) -> Label (plot)
 # optimized sequential is baseline reference
 ALGOS_TO_TEST = {
+    "naive": "Sequential Naive",
     "opt": "Sequential Optimized",
     "mult_par": "Query Parallel (Locks)",
     "dat_par": "Data Parallel (Base)",
@@ -123,7 +124,7 @@ def phase1_raw_performance():
 
         for algo, label in ALGOS_TO_TEST.items():
             # sequential baseline runs at 1 thread, the others at maximum power
-            t = 1 if algo == "opt" else MAX_LOGICAL_CORES
+            t = 1 if algo in ["opt", "naive"] else MAX_LOGICAL_CORES
             wall_time = run_cpp_benchmark(algo, ds_path, t)
 
             times.append(wall_time)
@@ -170,7 +171,6 @@ def phase2_strong_scaling(target_ds: str):
     plt.plot(threads_list, threads_list, '--', color='black', alpha=0.6, label='Ideal Speedup')
 
     for i, (algo, label) in enumerate(ALGOS_TO_TEST.items()):
-        if algo == "opt": continue
 
         speedups = []
         print(f"\nScalability: {label}")
@@ -218,7 +218,6 @@ def phase3_weak_scaling(target_ds: str):
     plt.axhline(y=1.0, color='gray', linestyle='--', linewidth=2, label='Ideal Efficiency (100%)')
 
     for i, (algo, label) in enumerate(ALGOS_TO_TEST.items()):
-        if algo == "opt": continue
 
         efficiencies = []
         print(f"\nWeak Scaling: {label}")
