@@ -67,7 +67,7 @@ Config parse_arguments(int argc, char* argv[]) {
         else if (arg == "-h" || arg == "--help") {
             cout << "Usage: " << argv[0] << " --dataset <file> --num-queries <N> --query-length <L> [options]\n"
                  << "Options:\n"
-                 << "  --algo <type>     naive, opt, par_wind, mult_par, mult_par_opt, dat_par, dat_par_ext, both, all\n"
+                 << "  --algo <type>     naive, opt, par_wind, mult_par, mult_par_opt, dat_par, dat_par_ext, dat_par_ult, both, all\n"
                  << "  --quick           Run only 1 iteration (no warm-up, no stats)\n"
                  << "  --limit <N>       Limit dataset to N series (for Gustafson's Weak Scaling)\n"
                  << "  --chunk <N>       Set OpenMP chunk size (for Granularity Profiling)\n"
