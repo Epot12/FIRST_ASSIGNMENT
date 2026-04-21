@@ -21,7 +21,7 @@ from mockseries.seasonality import SinusoidalSeasonality
 from mockseries.noise import RedNoise
 from mockseries.utils import datetime_range
 
-# datasets metadata-
+# datasets metadata
 DATASETS = {"ucr_archive": {
     "url": "https://www.cs.ucr.edu/%7Eeamonn/time_series_data_2018/UCRArchive_2018.zip", #confirmed link
     "target_path": "data/UCRArchive_2018.zip",

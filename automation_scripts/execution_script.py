@@ -4,6 +4,8 @@ import subprocess
 import argparse
 import time
 import shutil
+import platform
+from pathlib import Path
 
 def run_command(command_list, cwd=None, env=None):
     try:
@@ -13,11 +15,13 @@ def run_command(command_list, cwd=None, env=None):
         sys.exit(1)
 
 def main():
+    default_path = Path("data") / "UCRArchive_2018" / "CinCECGTorso" / "CinCECGTorso_TEST.tsv"
+
     parser = argparse.ArgumentParser(description="HPC Pattern Matching Benchmark Manager")
 
     parser.add_argument("--algo", type=str, required=True,
                         help="Algorithm: naive, opt, par_wind, mult_par, dat_par, both, all")
-    parser.add_argument("--dataset", type=str, default="data/catchy_market_data.tsv")
+    parser.add_argument("--dataset", type=str, default=str(default_path))
     parser.add_argument("--queries", type=str, default="10")
     parser.add_argument("--length", type=str, default="128")
     parser.add_argument("--seed", type=str, default="42")
@@ -94,15 +98,34 @@ def main():
         current_env["OMP_SCHEDULE"] = "dynamic"
 
     if args.profile:
-        print(f"\n>>> PROFILING: {args.algo.upper()} <<<")
-        prof_filename = f"profiling_{args.algo}.prof"
-        current_env["CPUPROFILE"] = prof_filename
-        current_env["LD_PRELOAD"] = "/usr/lib/x86_64-linux-gnu/libprofiler.so"
-        run_command(run_args, env=current_env)
+        if sys.platform != "linux":
+            print(f"[WARNING] Profiling via LD_PRELOAD is only supported on Linux. Skipping...")
+        else:
+            print(f"\n>>> PROFILING: {args.algo.upper()} <<<")
+            prof_filename = f"profiling_{args.algo}.prof"
+            lib_paths = [
+                "/usr/lib/x86_64-linux-gnu/libprofiler.so",
+                "/usr/lib/libprofiler.so",
+                "/usr/local/lib/libprofiler.so"
+            ]
+
+            target_lib = next((p for p in lib_paths if os.path.exists(p)), None)
+            if target_lib:
+                current_env["CPUPROFILE"] = prof_filename
+                current_env["LD_PRELOAD"] = target_lib
+                run_command(run_args, env=current_env)
+            else:
+                print("[ERROR] libprofiler.so not found. Install gperftools.")
     else:
         print(f"\n>>> BENCHMARKING: {args.algo.upper()} <<<")
         # Disables ASLR for more stable measurements
-        benchmark_args = ["setarch", "x86_64", "-R"] + run_args
+        if sys.platform == "linux":
+            if platform.machine() == "x86_64":
+                benchmark_args = ["setarch", "x86_64", "-R"] + run_args
+            else:
+                print(f"[INFO] Architecture {platform.machine()} detected. Skipping setarch -R.")
+        else:
+            print(f"[INFO] Platform {sys.platform} detected. Running without setarch.")
 
         start_time = time.perf_counter()
         run_command(benchmark_args, env=current_env)
