@@ -74,14 +74,16 @@ def rebuild_for_benchmark():
 
 # Execution engine
 
+# Execution engine
+
 def run_cpp_benchmark(algo: str, dataset_path: str, threads: int,
                       num_queries: int = DEFAULT_NUM_QUERIES,
                       query_length: int = DEFAULT_QUERY_LENGTH,
-                      limit: int = 0, chunk: int = 0) -> float:
-    """Runs the benchmark and captures the average Wall Time."""
+                      limit: int = 0, chunk: int = 0): # Now returns (float, str)
+    """Runs the benchmark and captures the average Wall Time and Accuracy."""
     if not os.path.exists(dataset_path):
         print(f"[ERROR] Dataset not found: {dataset_path}")
-        return 0.0
+        return 0.0, "0/0"
 
     cmd = [
         str(EXEC_PATH),
@@ -91,7 +93,6 @@ def run_cpp_benchmark(algo: str, dataset_path: str, threads: int,
         "--algo", algo
     ]
 
-    # Dynamically adding new flags if required
     if limit > 0: cmd.extend(["--limit", str(limit)])
     if chunk > 0: cmd.extend(["--chunk", str(chunk)])
 
@@ -101,14 +102,19 @@ def run_cpp_benchmark(algo: str, dataset_path: str, threads: int,
 
     try:
         result = subprocess.run(cmd, env=env, capture_output=True, text=True, check=True)
-        # searching tag [PYTHON_PARSE] defined in main.cpp
-        match = re.search(r"\[PYTHON_PARSE\] Wall Time_MEAN:\s+([\d.]+)", result.stdout)
-        if match:
-            return float(match.group(1))
-        return 0.0
+
+        # 1. Extracts time
+        time_match = re.search(r"\[PYTHON_PARSE\] Wall Time_MEAN:\s+([\d.]+)", result.stdout)
+        wall_time = float(time_match.group(1)) if time_match else 0.0
+
+        # 2. Extracts accuracy (e.g. search for "Accuracy: 20/20")
+        acc_match = re.search(r"Accuracy:\s+([0-9]+/[0-9]+)", result.stdout)
+        accuracy = acc_match.group(1) if acc_match else "N/A"
+
+        return wall_time, accuracy
     except subprocess.CalledProcessError as e:
         print(f"[RUN ERROR] {algo} crashed: {e.stderr}")
-        return 0.0
+        return 0.0, "ERROR"
 
 # Pure performance
 
@@ -125,11 +131,11 @@ def phase1_raw_performance():
         for algo, label in ALGOS_TO_TEST.items():
             # sequential baseline runs at 1 thread, the others at maximum power
             t = 1 if algo in ["opt", "naive"] else MAX_LOGICAL_CORES
-            wall_time = run_cpp_benchmark(algo, ds_path, t)
-
+            wall_time, accuracy = run_cpp_benchmark(algo, ds_path, t)
             times.append(wall_time)
             labels.append(label.replace(" ", "\n")) # formatting for X axis
-            print(f"    {label:<25}: {wall_time:>8.2f} ms")
+            # prints accuracy
+            print(f"    {label:<25}: {wall_time:>8.2f} ms | Accuracy: {accuracy}")
 
         # Plotting
         plt.figure(figsize=(10, 6))
@@ -163,7 +169,7 @@ def phase2_strong_scaling(target_ds: str):
         current_t *= 2
 
     # time of the best sequential algorithm (Baseline)
-    t_sequential = run_cpp_benchmark("opt", ds_path, 1)
+    t_sequential,_ = run_cpp_benchmark("opt", ds_path, 1)
     print(f"[BASELINE] Sequential Optimized Time: {t_sequential:.2f} ms")
 
     plt.figure(figsize=(11, 7))
@@ -176,7 +182,7 @@ def phase2_strong_scaling(target_ds: str):
         print(f"\nScalability: {label}")
 
         for t in threads_list:
-            t_parallel = run_cpp_benchmark(algo, ds_path, t)
+            t_parallel,_ = run_cpp_benchmark(algo, ds_path, t)
             s = t_sequential / t_parallel if t_parallel > 0 else 0
             speedups.append(s)
             print(f"  Threads {t:>2} | Speedup: {s:>5.2f}x")
@@ -222,13 +228,13 @@ def phase3_weak_scaling(target_ds: str):
         efficiencies = []
         print(f"\nWeak Scaling: {label}")
 
-        t1 = run_cpp_benchmark(algo, ds_path, threads=1, limit=base_limit)
+        t1,_ = run_cpp_benchmark(algo, ds_path, threads=1, limit=base_limit)
         efficiencies.append(1.0)
         print(f"  Threads  1 | Limit {base_limit:>5} | Time: {t1:.2f} ms | Eff: 1.00")
 
         for t in threads_list[1:]:
             current_limit = base_limit * t
-            tN = run_cpp_benchmark(algo, ds_path, threads=t, limit=current_limit)
+            tN,_ = run_cpp_benchmark(algo, ds_path, threads=t, limit=current_limit)
 
             eff = t1 / tN if tN > 0 else 0
             efficiencies.append(eff)
@@ -268,7 +274,7 @@ def phase4_chunk_optimization(target_ds: str):
     print(f"\n--- Granularity Scan: {ALGOS_TO_TEST[target_algo]} at {threads} threads ---")
 
     for c in chunk_sizes:
-        time = run_cpp_benchmark(target_algo, ds_path, threads=threads, chunk=c)
+        time,_ = run_cpp_benchmark(target_algo, ds_path, threads=threads, chunk=c)
         times.append(time)
         print(f"  Chunk Size: {c:>3} | Time: {time:.2f} ms")
 
@@ -318,7 +324,7 @@ def phase5_deep_exploration(target_ds: str, deep_exploration: bool = True):
         for j, q_len in enumerate(lengths_grid):
             print(f"  -> Testing: Queries={num_q:>3} | Length={q_len:>3}...", end="", flush=True)
 
-            t_mean = run_cpp_benchmark(target_algo, ds_path, threads,
+            t_mean,_ = run_cpp_benchmark(target_algo, ds_path, threads,
                                        num_queries=num_q, query_length=q_len)
 
             results_matrix[i, j] = t_mean
