@@ -359,9 +359,6 @@ def phase5_deep_exploration(target_ds: str, deep_exploration: bool = True):
 # MAIN EXECUTION
 
 if __name__ == "__main__":
-# MAIN EXECUTION
-
-if __name__ == "__main__":
     # CLI parser configuration
     parser = argparse.ArgumentParser(description="HPC Benchmark Suite Orchestrator")
 
