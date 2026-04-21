@@ -3,6 +3,7 @@ import re
 import os
 import sys
 import time
+import argparse
 import shutil
 import numpy as np
 import matplotlib.pyplot as plt
@@ -74,7 +75,8 @@ def rebuild_for_benchmark():
 
 def run_cpp_benchmark(algo: str, dataset_path: str, threads: int,
                       num_queries: int = DEFAULT_NUM_QUERIES,
-                      query_length: int = DEFAULT_QUERY_LENGTH) -> float:
+                      query_length: int = DEFAULT_QUERY_LENGTH,
+                      limit: int = 0, chunk: int = 0) -> float:
     """Runs the benchmark and captures the average Wall Time."""
     if not os.path.exists(dataset_path):
         print(f"[ERROR] Dataset not found: {dataset_path}")
@@ -87,6 +89,10 @@ def run_cpp_benchmark(algo: str, dataset_path: str, threads: int,
         "--query-length", str(query_length),
         "--algo", algo
     ]
+
+    # Dynamically adding new flags if required
+    if limit > 0: cmd.extend(["--limit", str(limit)])
+    if chunk > 0: cmd.extend(["--chunk", str(chunk)])
 
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(threads)
@@ -191,6 +197,101 @@ def phase2_strong_scaling(target_ds: str):
     plt.close()
 
 
+# PHASE 3: WEAK SCALING (GUSTAFSON)
+
+def phase3_weak_scaling(target_ds: str):
+    print("\n" + "="*60)
+    print(f" PHASE 3: WEAK SCALING (GUSTAFSON) ON {target_ds}")
+    print("="*60)
+
+    ds_path = DATASETS[target_ds]
+
+    threads_list = []
+    current_t = 1
+    while current_t <= MAX_LOGICAL_CORES:
+        threads_list.append(current_t)
+        current_t *= 2
+
+    base_limit = 500  # Basic problem size for 1 thread
+
+    plt.figure(figsize=(10, 6))
+    plt.axhline(y=1.0, color='gray', linestyle='--', linewidth=2, label='Ideal Efficiency (100%)')
+
+    for i, (algo, label) in enumerate(ALGOS_TO_TEST.items()):
+        if algo == "opt": continue
+
+        efficiencies = []
+        print(f"\nWeak Scaling: {label}")
+
+        t1 = run_cpp_benchmark(algo, ds_path, threads=1, limit=base_limit)
+        efficiencies.append(1.0)
+        print(f"  Threads  1 | Limit {base_limit:>5} | Time: {t1:.2f} ms | Eff: 1.00")
+
+        for t in threads_list[1:]:
+            current_limit = base_limit * t
+            tN = run_cpp_benchmark(algo, ds_path, threads=t, limit=current_limit)
+
+            eff = t1 / tN if tN > 0 else 0
+            efficiencies.append(eff)
+            print(f"  Threads {t:>2} | Limit {current_limit:>5} | Time: {tN:.2f} ms | Eff: {eff:.2f}")
+
+        plt.plot(threads_list, efficiencies, marker='^', markersize=8, linewidth=2.5, color=COLORS[i], label=label)
+
+    plt.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', alpha=0.8)
+    plt.text(MAX_PHYSICAL_CORES + 0.5, 0.5, 'Physical Cores Limit', color='red', rotation=90, verticalalignment='center')
+
+    plt.xlabel('Number of Threads and Proportional Workload', fontweight='bold')
+    plt.ylabel('Efficiency (T1 / Tn)', fontweight='bold')
+    plt.title(f"Gustafson's Law (Weak Scaling): {target_ds}", fontsize=14)
+    plt.ylim(0, 1.2)
+    plt.xticks(threads_list)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(PLOTS_DIR / f'Phase3_Gustafson_{target_ds}.pdf')
+    plt.close()
+
+
+
+# PHASE 4: GRANULARITY PROFILING (CHUNK SIZE)
+
+def phase4_chunk_optimization(target_ds: str):
+    print("\n" + "="*60)
+    print(f" PHASE 4: CHUNK SIZE OPTIMIZATION ON {target_ds}")
+    print("="*60)
+
+    ds_path = DATASETS[target_ds]
+    chunk_sizes = [1, 2, 4, 8, 16, 32, 64, 128]
+
+    target_algo = "dat_par_ult" # testing best algorithm
+    threads = MAX_LOGICAL_CORES
+
+    times = []
+    print(f"\n--- Granularity Scan: {ALGOS_TO_TEST[target_algo]} at {threads} threads ---")
+
+    for c in chunk_sizes:
+        time = run_cpp_benchmark(target_algo, ds_path, threads=threads, chunk=c)
+        times.append(time)
+        print(f"  Chunk Size: {c:>3} | Time: {time:.2f} ms")
+
+    best_time = min(times)
+    best_chunk = chunk_sizes[times.index(best_time)]
+    print(f"\n[V] Optimal Chunk: {best_chunk} (Time: {best_time:.2f} ms)")
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(chunk_sizes, times, marker='o', color=COLORS[3], linewidth=2.5)
+    plt.plot(best_chunk, best_time, marker='*', markersize=15, color='red', label=f'Best Chunk: {best_chunk}')
+
+    plt.xlabel('OpenMP Dynamic Chunk Size', fontweight='bold')
+    plt.ylabel('Execution Time (ms) - Lower is Better', fontweight='bold')
+    plt.title(f"Granularity Profiling on {target_ds} ({threads} Threads)", fontsize=14)
+    plt.xscale('log', base=2)
+    plt.xticks(chunk_sizes, labels=chunk_sizes)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(PLOTS_DIR / f'Phase4_ChunkOpt_{target_ds}.pdf')
+    plt.close()
+
+
 # PHASE 5: DEEP EXPLORATION (SENSITIVITY ANALYSIS)
 
 def phase5_deep_exploration(target_ds: str, deep_exploration: bool = True):
@@ -258,15 +359,50 @@ def phase5_deep_exploration(target_ds: str, deep_exploration: bool = True):
 # MAIN EXECUTION
 
 if __name__ == "__main__":
-    # ensuring executable exists and it is cleaned
+# MAIN EXECUTION
+
+if __name__ == "__main__":
+    # CLI parser configuration
+    parser = argparse.ArgumentParser(description="HPC Benchmark Suite Orchestrator")
+
+    # optional flags
+    parser.add_argument("--all", action="store_true", help="Executes all the phases (1, 2, 3, 4, 5)")
+    parser.add_argument("--gustafson", action="store_true", help="Enables phase 3: Weak Scaling (Gustafson)")
+    parser.add_argument("--chunk", action="store_true", help="Enables phase 4: Granularity Profiling (Chunk Size)")
+
+    args = parser.parse_args()
+
+    # activation logic
+    run_phase3 = args.all or args.gustafson
+    run_phase4 = args.all or args.chunk
+
+    print("\n" + "="*60)
+    print(" BENCHMARK SUITE INITIALIZATION")
+    print(f" Enabled phases: [1, 2, 5" +
+          (", 3" if run_phase3 else "") +
+          (", 4" if run_phase4 else "") + "]")
+    print("="*60)
+
+    # Execution
+
+    # always builds cleaned executable
     rebuild_for_benchmark()
 
-    # Phase 1: Comparison on all datasets (Max Threads)
+    # Phase 1: Throughput (Always active by default)
     phase1_raw_performance()
 
-    # Phase 2: Amdahl's law on the most significant dataset
+    # Phase 2: Amdahl (Always active by default)
     phase2_strong_scaling("StarLightCurves")
 
+    # Phase 3: Gustafson (Activate on demand)
+    if run_phase3:
+        phase3_weak_scaling("StarLightCurves")
+
+    # Phase 4: Chunk Size (Activate on Demand)
+    if run_phase4:
+        phase4_chunk_optimization("StarLightCurves")
+
+    # Phase 5: Sensitivity Map (Always active by default)
     phase5_deep_exploration("StarLightCurves", deep_exploration=True)
 
     print("\n" + "="*60)
