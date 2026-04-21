@@ -13,6 +13,7 @@ import requests
 import zipfile
 import sys
 import random
+import argparse
 import numpy as np
 from datetime import datetime, timedelta
 from mockseries.trend import LinearTrend
@@ -56,40 +57,43 @@ def download_file(url, target_path):
     print("\nDownload completed.")
 
 # deterministic synthetic data generator
-def generate_synthetic_dataset(output_path):
-    """Generates a synthetic time series of 1 year (1 minute granularity) and saves it in txt."""
-    print(f"[*] Synthetic dataset generation in progress (may take a few seconds)...")
+# deterministic synthetic data generator
+def generate_synthetic_dataset(output_path, num_series, series_length):
+    """Generates N synthetic time series of length L and saves them in txt."""
+    print(f"[*] Synthetic dataset generation: {num_series} series of {series_length} timesteps...")
 
     # fixing the seed to ensure reproducibility
     random.seed(42)
-    np.random.seed(42) #mock series generator uses numpy so this setting is needed to ensure reproducibility
+    np.random.seed(42)
 
     # Construction of the signal components
     trend = LinearTrend(coefficient=2, time_unit=timedelta(days=4), flat_base=100)
     seasonality = SinusoidalSeasonality(amplitude=20, period=timedelta(days=7)) \
                   + SinusoidalSeasonality(amplitude=4, period=timedelta(days=1))
-    noise = RedNoise(mean=0, std=3, correlation=0.5)
 
-    timeseries = trend + seasonality + noise
+    timeseries_base = trend + seasonality
 
-    # Timeframe definition: 1 year with 1 measurement per minute
+    # Timeframe definition: exact length requested (1 minute = 1 timestep)
     ts_index = datetime_range(
         granularity=timedelta(minutes=1),
         start_time=datetime(2023, 1, 1),
-        end_time=datetime(2023, 12, 31)
+        end_time=datetime(2023, 1, 1) + timedelta(minutes=series_length - 1)
     )
 
-    ts_values = timeseries.generate(ts_index)
+    base_values = timeseries_base.generate(ts_index)
 
-    # Saving data in pure text format for C++
+    # Saving data in pure text format for C++ (TSV format)
     with open(output_path, "w") as f:
-        for val in ts_values:
-            f.write(f"{val}\t") # uses tab instead of line break
-        f.write("\n")
+        for i in range(num_series):
+            # Adds random noise to each line to make them unique but similar
+            noise = np.random.normal(0, 3, series_length)
+            series_values = base_values + noise
+            f.write("\t".join(f"{val:.4f}" for val in series_values) + "\n")
 
-    print(f"    [OK] Synthetic dataset saved in {output_path} ({len(ts_values)} timesteps).")
+    file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+    print(f"    [OK] Synthetic dataset saved in {output_path} ({file_size_mb:.1f} MB).")
 
-def setup():
+def setup(num_series, series_length):
     """Coordinates the checking, downloading and generation of datasets."""
     if not os.path.exists("data"):
         os.makedirs("data")
@@ -132,11 +136,23 @@ def setup():
     # Synthetic Data Management (Idempotent)
     synthetic_path = "data/synthetic_timeseries.txt"
     if os.path.exists(synthetic_path):
-        print(f"[*] Synthetic dataset already present in {synthetic_path}.")
-    else:
-        generate_synthetic_dataset(synthetic_path)
+        print(f"[*] Removing old synthetic dataset to apply new parameters...")
+        os.remove(synthetic_path)
+
+    generate_synthetic_dataset(synthetic_path, num_series, series_length)
 
     print("\n[+] Setup completed. All datasets are ready for the C++ Engine.")
 
 if __name__ == "__main__":
-    setup()
+    # Initialize the parser to read commands from the terminal
+    parser = argparse.ArgumentParser(description="HPC Dataset Generator")
+
+    # Defines the two optional parameters with their default values
+    parser.add_argument("--num-series", type=int, default=1000, help="Number of synthetic time series")
+    parser.add_argument("--length", type=int, default=65536, help="Length of each time series (timesteps)")
+
+    # "Captures" the values written by the user in the terminal
+    args = parser.parse_args()
+
+    # Calls the function passing it the two extracted numbers
+    setup(args.num_series, args.length)
