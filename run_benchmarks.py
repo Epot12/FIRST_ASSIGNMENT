@@ -172,23 +172,24 @@ def phase2_strong_scaling(target_ds: str):
     t_sequential,_ = run_cpp_benchmark("opt", ds_path, 1)
     print(f"[BASELINE] Sequential Optimized Time: {t_sequential:.2f} ms")
 
-    plt.figure(figsize=(11, 7))
-    # Ideal Speedup Line (Linear)
-    plt.plot(threads_list, threads_list, '--', color='black', alpha=0.6, label='Ideal Speedup')
+    t_naive, _ = run_cpp_benchmark("naive", ds_path, 1)
+    t_opt, _ = run_cpp_benchmark("opt", ds_path, 1)
 
     for i, (algo, label) in enumerate(ALGOS_TO_TEST.items()):
+        if algo in ["naive", "opt"]:
+            # Linea orizzontale basata sul tempo calcolato una volta
+            valore_fisso = t_sequential / (t_naive if algo == "naive" else t_opt)
+            plt.axhline(y=valore_fisso, color=COLORS[i], linestyle='--',
+                        label=f"{label} (Baseline Constant)")
+            continue
 
+        # Per gli altri (paralleli), eseguiamo il test sui vari thread
         speedups = []
-        print(f"\nScalability: {label}")
-
         for t in threads_list:
-            t_parallel,_ = run_cpp_benchmark(algo, ds_path, t)
-            s = t_sequential / t_parallel if t_parallel > 0 else 0
-            speedups.append(s)
-            print(f"  Threads {t:>2} | Speedup: {s:>5.2f}x")
+            t_par, _ = run_cpp_benchmark(algo, ds_path, t)
+            speedups.append(t_sequential / t_par if t_par > 0 else 0)
 
-        plt.plot(threads_list, speedups, marker='s', markersize=8, linewidth=2.5, label=label)
-
+        plt.plot(threads_list, speedups, marker='s', label=label)
     # highlighting the limit of physical cores
     plt.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', alpha=0.8)
     plt.text(MAX_PHYSICAL_CORES + 0.5, 1, 'Physical Cores Limit', color='red', rotation=90, verticalalignment='bottom')
@@ -224,23 +225,26 @@ def phase3_weak_scaling(target_ds: str):
     plt.axhline(y=1.0, color='gray', linestyle='--', linewidth=2, label='Ideal Efficiency (100%)')
 
     for i, (algo, label) in enumerate(ALGOS_TO_TEST.items()):
-
         efficiencies = []
-        print(f"\nWeak Scaling: {label}")
-
-        t1,_ = run_cpp_benchmark(algo, ds_path, threads=1, limit=base_limit)
+        # Calcoliamo il tempo al carico base (t1)
+        t1, _ = run_cpp_benchmark(algo, ds_path, threads=1, limit=base_limit)
         efficiencies.append(1.0)
-        print(f"  Threads  1 | Limit {base_limit:>5} | Time: {t1:.2f} ms | Eff: 1.00")
 
         for t in threads_list[1:]:
             current_limit = base_limit * t
-            tN,_ = run_cpp_benchmark(algo, ds_path, threads=t, limit=current_limit)
 
-            eff = t1 / tN if tN > 0 else 0
+            if algo in ["naive", "opt"]:
+                # Un sequenziale al carico N ci mette (Tempo_base * N)
+                # Quindi l'efficienza è sempre 1/t (crolla)
+                eff = 1.0 / t
+            else:
+                # Un parallelo lo testiamo davvero
+                tN, _ = run_cpp_benchmark(algo, ds_path, threads=t, limit=current_limit)
+                eff = t1 / tN if tN > 0 else 0
+
             efficiencies.append(eff)
-            print(f"  Threads {t:>2} | Limit {current_limit:>5} | Time: {tN:.2f} ms | Eff: {eff:.2f}")
 
-        plt.plot(threads_list, efficiencies, marker='^', markersize=8, linewidth=2.5, color=COLORS[i], label=label)
+        plt.plot(threads_list, efficiencies, marker='^', label=label)
 
     plt.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', alpha=0.8)
     plt.text(MAX_PHYSICAL_CORES + 0.5, 0.5, 'Physical Cores Limit', color='red', rotation=90, verticalalignment='center')
