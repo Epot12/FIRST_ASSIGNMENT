@@ -77,7 +77,7 @@ def generate_synthetic_dataset(output_path, num_series, series_length):
     ts_index = datetime_range(
         granularity=timedelta(minutes=1),
         start_time=datetime(2023, 1, 1),
-        end_time=datetime(2023, 1, 1) + timedelta(minutes=series_length - 1)
+        end_time=datetime(2023, 1, 1) + timedelta(minutes=series_length)
     )
 
     base_values = timeseries_base.generate(ts_index)
