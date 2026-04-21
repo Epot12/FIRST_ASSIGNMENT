@@ -159,7 +159,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="HPC Dataset Generator")
 
     # Defines the two optional parameters with their default values
-    parser.add_argument("--num-series", type=int, default=1000, help="Number of synthetic time series")
+    parser.add_argument("--num-series", type=int, default=100, help="Number of synthetic time series")
     parser.add_argument("--length", type=int, default=65536, help="Length of each time series (timesteps)")
 
     # "Captures" the values written by the user in the terminal
