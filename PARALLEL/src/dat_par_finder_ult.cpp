@@ -36,7 +36,7 @@ std::vector<match_result> dat_par_finder_ult(
 #pragma omp parallel default(none) \
     shared(db_size, num_queries, query_length, data_offsets, flat_data, flat_queries_norm, best_results, global_thresholds)
     {
-        // Circular buffer allocated locally in single thread memory (L1 Cache)
+        // Circular buffer allocated locally in single thread memory
         std::vector<real_t> X(query_length);
 
         // PRIVATE ARRAY OF RESULTS: should avoid False Sharing on continuous local writes
