@@ -57,7 +57,6 @@ def download_file(url, target_path):
     print("\nDownload completed.")
 
 # deterministic synthetic data generator
-# deterministic synthetic data generator
 def generate_synthetic_dataset(output_path, num_series, series_length):
     """Generates N synthetic time series of length L and saves them in txt."""
     print(f"[*] Synthetic dataset generation: {num_series} series of {series_length} timesteps...")
@@ -73,7 +72,7 @@ def generate_synthetic_dataset(output_path, num_series, series_length):
 
     timeseries_base = trend + seasonality
 
-    # Timeframe definition: exact length requested (1 minute = 1 timestep)
+    # Timeframe definition: 1 minute = 1 timestep
     ts_index = datetime_range(
         granularity=timedelta(minutes=1),
         start_time=datetime(2023, 1, 1),
@@ -82,12 +81,24 @@ def generate_synthetic_dataset(output_path, num_series, series_length):
 
     base_values = timeseries_base.generate(ts_index)
 
+    x_axis = np.linspace(0, 50 * np.pi, series_length)
+
     # Saving data in pure text format for C++ (TSV format)
     with open(output_path, "w") as f:
         for i in range(num_series):
-            # Adds random noise to each line to make them unique but similar
+            # 1. base noise
             noise = np.random.normal(0, 3, series_length)
-            series_values = base_values + noise
+
+            # 2. UNIQUE SHAPE: Frequency, Phase and Amplitude randomized for THIS row
+            freq = np.random.uniform(0.1, 3.0)       # How "thick" the waves are
+            phase = np.random.uniform(0, 2 * np.pi)  # Where does the wave come from?
+            amplitude = np.random.uniform(10, 50)    # How high is the wave
+
+            unique_wave = amplitude * np.sin(freq * x_axis + phase)
+
+            # 3. combining: Base + Single Wave + Noise
+            series_values = base_values + unique_wave + noise
+
             f.write("\t".join(f"{val:.4f}" for val in series_values) + "\n")
 
     file_size_mb = os.path.getsize(output_path) / (1024 * 1024)
