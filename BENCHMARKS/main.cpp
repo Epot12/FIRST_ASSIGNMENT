@@ -173,9 +173,10 @@ int main(int argc, char* argv[]) {
                 // [1. START PROFILING] - after warmup
 #ifdef USE_PROFILER
                 if (i == config.warmup_runs) {
-                    // It is activated exactly at the beginning of the first "official" run
                     cout << "   >>> [PROFILER] Registration started for " << algo_name << "...\n";
-                    ProfilerStart("whole.prof");
+                    // creating the file name by combining "prof_" and the name of the algorithm
+                    string prof_filename = "prof_" + algo_name + ".prof";
+                    ProfilerStart(prof_filename.c_str());
                 }
 #endif
 
@@ -227,7 +228,7 @@ int main(int argc, char* argv[]) {
 
         // 3. Computing phase (routing to algorithms)
         if (config.algo == "naive" || config.algo == "all" || config.algo == "both") {
-            run_experiment("NAIVE SEQUENTIAL", [&]() {
+            run_experiment("NAIVE_SEQUENTIAL", [&]() {
                 vector<match_result> results(config.num_queries);
                 for (size_t q = 0; q < queries.size(); q++) {
                     results[q] = find_pattern(queries[q].data, database);
@@ -237,7 +238,7 @@ int main(int argc, char* argv[]) {
         }
 
         if (config.algo == "opt" || config.algo == "all" || config.algo == "both") {
-            run_experiment("OPTIMIZED SEQ", [&]() {
+            run_experiment("OPTIMIZED_SEQ", [&]() {
                 vector<match_result> results(config.num_queries);
                 for (size_t q = 0; q < queries.size(); q++) {
                     results[q] = find_pattern_opt(queries[q].data, database);
@@ -247,43 +248,43 @@ int main(int argc, char* argv[]) {
         }
 
         if (config.algo == "par_wind" || config.algo == "all") {
-            run_experiment("PARALLEL WINDOW", [&]() {
+            run_experiment("PARALLEL_WINDOW", [&]() {
                 return par_finder(flat_queries, config.query_length, flat_data, data_offsets);
             });
         }
 
         if (config.algo == "mult_par" || config.algo == "all") {
-            run_experiment("PARALLEL QUERY", [&]() {
+            run_experiment("PARALLEL_QUERY", [&]() {
                 return mult_par_finder(flat_queries, config.query_length, flat_data, data_offsets);
             });
         }
 
         if (config.algo == "mult_par_opt" || config.algo == "all") {
-            run_experiment("PARALLEL QUERY OPT", [&]() {
+            run_experiment("PARALLEL_QUERY_OPT", [&]() {
                 return mult_par_finder_opt(flat_queries, config.query_length, flat_data, data_offsets);
             });
         }
 
         if (config.algo == "dat_par" || config.algo == "all") {
-            run_experiment("DATA PARALLEL", [&]() {
+            run_experiment("DATA_PARALLEL", [&]() {
                 return dat_par_finder(flat_queries, config.query_length, flat_data, data_offsets);
             });
         }
 
         if (config.algo == "dat_par_opt" || config.algo == "all") {
-            run_experiment("DATA PARALLEL OPT", [&]() {
+            run_experiment("DATA_PARALLEL_OPT", [&]() {
                 return dat_par_finder_opt(flat_queries, config.query_length, flat_data, data_offsets);
             });
         }
 
         if (config.algo == "dat_par_ext" || config.algo == "all") {
-            run_experiment("DATA PARALLEL EXTREME", [&]() {
+            run_experiment("DATA_PARALLEL_EXTREME", [&]() {
                 return dat_par_finder_ext(flat_queries, config.query_length, flat_data, data_offsets);
             });
         }
 
         if (config.algo == "dat_par_ult" || config.algo == "all") {
-            run_experiment("DATA PARALLEL ULTRA", [&]() {
+            run_experiment("DATA_PARALLEL_ULTRA", [&]() {
                 return dat_par_finder_ult(flat_queries, config.query_length, flat_data, data_offsets);
             });
         }

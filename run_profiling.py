@@ -18,7 +18,6 @@ GPERFTOOLS_LIB = "/usr/lib/x86_64-linux-gnu"
 
 BUILD_DIR = "build_profiling"
 EXEC_PATH = f"./{BUILD_DIR}/FIRST_ASSIGNMENT"
-PROF_RAW_FILE = "whole.prof"
 OUT_DIR = Path("./profiling_reports")
 
 def run_command(command_list, cwd=None, env=None, stdout=None):
@@ -79,30 +78,44 @@ def execute_and_profile(algo: str, threads: int):
 
     print(f"  [RUN] Algo: {algo:<15} | Threads: {threads}")
     run_command(cmd, env=env)
-    print(f"[V] Execution finished. Generated raw file: {PROF_RAW_FILE}")
+    if algo == "all" or algo == "both":
+        print("[V] Execution finished. Generated multiple .prof files.")
+    else:
+        print(f"[V] Execution finished. Expected raw file: prof_{algo.upper()}.prof")
 
-def generate_report(algo: str):
-    """Converts the raw .prof file into a readable text report."""
+def generate_reports():
+    """Converts ALL raw .prof files found in the current directory into readable text reports."""
     print("\n" + "="*50)
-    print(" PHASE 3: GENERATION OF PPROF REPORT")
+    print(" PHASE 3: GENERATION OF PPROF REPORTS")
     print("="*50)
 
     OUT_DIR.mkdir(exist_ok=True)
-    report_filename = OUT_DIR / f"profiling_{algo}.txt"
 
-    if not os.path.exists(PROF_RAW_FILE):
-        print(f"\n[ERROR] File {PROF_RAW_FILE} has not been generated.")
+    # Finds all files ending with .prof in the current folder
+    prof_files = list(Path(".").glob("*.prof"))
+
+    if not prof_files:
+        print("\n[ERROR] No .prof files found to analyze.")
         return
 
-    # Command: pprof --text ./executable whole.prof > report.txt
-    pprof_cmd = [PPROF_PATH, "--text", EXEC_PATH, PROF_RAW_FILE]
+    for prof_file in prof_files:
+        # Extracts the algorithm name from the file name
+        # E.g.: "prof_NAIVE_SEQUENTIAL.prof" -> "NAIVE_SEQUENTIAL"
+        algo_name = prof_file.stem.replace("prof_", "")
 
-    with open(report_filename, "w") as out_file:
-        run_command(pprof_cmd, stdout=out_file)
+        report_filename = OUT_DIR / f"profiling_{algo_name}.txt"
 
-    # cleaning raw file
-    os.remove(PROF_RAW_FILE)
-    print(f" Profiling completed! Analysis saved in: {report_filename}\n")
+        # Command: pprof --text ./executable prof_namealgo.prof > report.txt
+        pprof_cmd = [PPROF_PATH, "--text", EXEC_PATH, str(prof_file)]
+
+        with open(report_filename, "w") as out_file:
+            run_command(pprof_cmd, stdout=out_file)
+
+        # Cleanup: Deletes the raw file just analyzed
+        prof_file.unlink()
+        print(f" [V] Profiling generated for {algo_name}: {report_filename}")
+
+    print(f"\n Profiling fully completed! All analysis saved in: {OUT_DIR}/")
 
 
 if __name__ == "__main__":
@@ -122,4 +135,5 @@ if __name__ == "__main__":
         print("\n[SKIP] Compilation phase skipped by flag --no-build.")
 
     execute_and_profile(args.algo, args.threads)
-    generate_report(args.algo)
+
+    generate_reports()
