@@ -234,11 +234,11 @@ def phase3_weak_scaling(target_ds: str):
             current_limit = base_limit * t
 
             if algo in ["naive", "opt"]:
-                # Un sequenziale al carico N ci mette (Tempo_base * N)
-                # Quindi l'efficienza è sempre 1/t (crolla)
+                # A sequential load N takes (Time_base * N)
+                # So efficiency is always 1/t (collapses)
                 eff = 1.0 / t
             else:
-                # Un parallelo lo testiamo davvero
+                # parallels need to be tested
                 tN, _ = run_cpp_benchmark(algo, ds_path, threads=t, limit=current_limit)
                 eff = t1 / tN if tN > 0 else 0
 
