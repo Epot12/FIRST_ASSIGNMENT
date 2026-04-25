@@ -325,11 +325,14 @@ def phase3_weak_scaling(target_ds: str):
     plt.tight_layout()
 
     # Salvataggio con nome aggiornato per evitare sovrascritture o confusioni
-    plot_file = PLOTS_DIR / f'ScaledSpeedup_Gustafson_{target_ds}_{TIMESTAMP}.pdf'
-    plt.savefig(plot_file)
-    plt.close()
+    base_filename = PLOTS_DIR / f'ScaledSpeedup_Gustafson_{target_ds}_{TIMESTAMP}'
 
-    print(f"[V] Plot saved in: {plot_file}")
+    # 1. Salva in PDF (Vettoriale, risoluzione infinita)
+    # bbox_inches='tight' rimuove lo spazio bianco inutile intorno al grafico
+    plot_file_pdf = f"{base_filename}.pdf"
+    plt.savefig(plot_file_pdf, format='pdf', bbox_inches='tight')
+    plt.close()
+    print(f"[V] Plot saved in: {plot_file_pdf}")
 
 
 
