@@ -44,7 +44,7 @@ std::vector<match_result> dat_par_finder_ext(
 
         // 4. LOOP INTERCHANGE and LOAD BALANCING
         // External loop on the Time Series so that data is read from RAM only once.
-#pragma omp for schedule(runtime) nowait //here the value was 16 but it has been removed to use runtime
+#pragma omp for schedule(guided, 16) nowait //here the value was 16 but it has been removed to use runtime
         for (size_t i = 0; i < db_size; i++) {
             size_t ts_start = data_offsets[i];
             size_t ts_end = data_offsets[i + 1];

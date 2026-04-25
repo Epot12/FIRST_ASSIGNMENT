@@ -53,7 +53,7 @@ std::vector<match_result> dat_par_finder_opt(
 
             // 3. LOAD BALANCING: Chunk size 16 to reduce OS calls
             // Using "nowait" allows faster threads to move on to the next query immediately
-#pragma omp for schedule(runtime) nowait //here the value was dynamic, 16 but it has been removed to use runtime
+#pragma omp for schedule(dynamic, 64) nowait //here the value was dynamic, 16 but it has been removed to use runtime
             for (size_t i = 0; i < db_size; i++) {
                 size_t ts_start = data_offsets[i];
                 size_t ts_end = data_offsets[i + 1];
