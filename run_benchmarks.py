@@ -368,48 +368,61 @@ def phase5_deep_exploration(target_ds: str, deep_exploration: bool = True):
 # MAIN EXECUTION
 
 if __name__ == "__main__":
-    # CLI parser configuration
     parser = argparse.ArgumentParser(description="HPC Benchmark Suite Orchestrator")
 
-    # optional flags
-    parser.add_argument("--all", action="store_true", help="Executes all the phases (1, 2, 3, 4, 5)")
-    parser.add_argument("--gustafson", action="store_true", help="Enables phase 3: Weak Scaling (Gustafson)")
-    parser.add_argument("--chunk", action="store_true", help="Enables phase 4: Granularity Profiling (Chunk Size)")
+    # Flag for total or modular activation
+    parser.add_argument("--all", action="store_true", help="Executes all phases (1, 2, 3, 4, 5)")
+    parser.add_argument("--p1", action="store_true", help="Phase 1: Absolute Performance (Throughput)")
+    parser.add_argument("--p2", action="store_true", help="Phase 2: Strong Scaling (Amdahl's Law)")
+    parser.add_argument("--p3", action="store_true", help="Phase 3: Weak Scaling (Gustafson's Law)")
+    parser.add_argument("--p4", action="store_true", help="Phase 4: Granularity Profiling (Chunk Size)")
+    parser.add_argument("--p5", action="store_true", help="Phase 5: Sensitivity Analysis (Heatmap)")
 
     args = parser.parse_args()
 
-    # activation logic
-    run_phase3 = args.all or args.gustafson
-    run_phase4 = args.all or args.chunk
+    # Phase activation logic
+    run_p1 = args.all or args.p1
+    run_p2 = args.all or args.p2
+    run_p3 = args.all or args.p3
+    run_p4 = args.all or args.p4
+    run_p5 = args.all or args.p5
+
+    # If the user does not specify any steps, print the help and exit
+    if not any([run_p1, run_p2, run_p3, run_p4, run_p5]):
+        print("\n[!] No phase selected.")
+        parser.print_help()
+        sys.exit(0)
 
     print("\n" + "="*60)
-    print(" BENCHMARK SUITE INITIALIZATION")
-    print(f" Enabled phases: [1, 2, 5" +
-          (", 3" if run_phase3 else "") +
-          (", 4" if run_phase4 else "") + "]")
+    print("      HPC BENCHMARK SUITE INITIALIZATION")
+    active_phases = [i+1 for i, p in enumerate([run_p1, run_p2, run_p3, run_p4, run_p5]) if p]
+    print(f" Enabled phases: {active_phases}")
     print("="*60)
 
-    # Execution
-
-    # always builds cleaned executable
+    # 1. Build Engine: clean execution before tests
     rebuild_for_benchmark()
 
-    # Phase 1: Throughput (Always active by default)
-    phase1_raw_performance()
+    # 2. Execution Engine: conditional flow of phases
 
-    # Phase 2: Amdahl (Always active by default)
-    phase2_strong_scaling("StarLightCurves")
+    # Phase 1: Absolute Throughput
+    if run_p1:
+        phase1_raw_performance()
 
-    # Phase 3: Gustafson (Activate on demand)
-    if run_phase3:
+    # Phase 2: Amdahl (Strong Scaling)
+    if run_p2:
+        phase2_strong_scaling("StarLightCurves")
+
+    # Phase 3: Gustafson (Weak Scaling)
+    if run_p3:
         phase3_weak_scaling("StarLightCurves")
 
-    # Phase 4: Chunk Size (Activate on Demand)
-    if run_phase4:
+    # Phase 4: Chunk Size Optimization (Granularity)
+    if run_p4:
         phase4_chunk_optimization("StarLightCurves")
 
-    # Phase 5: Sensitivity Map (Always active by default)
-    phase5_deep_exploration("StarLightCurves", deep_exploration=True)
+    # Phase 5: Sensitivity Map (Deep Exploration)
+    if run_p5:
+        phase5_deep_exploration("StarLightCurves", deep_exploration=True)
 
     print("\n" + "="*60)
     print(" EVALUATION SUITE COMPLETED")
