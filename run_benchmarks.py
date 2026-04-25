@@ -54,6 +54,19 @@ ALGOS_TO_TEST = {
     "dat_par_ult": "Data Parallel (Lock-Free)"
 }
 
+ALGO_DEFAULTS = {
+    "naive":         None,         # Sequenziale
+    "opt":           None,         # Sequenziale
+    "par_wind":      "guided,256", # Par_finder (Windows parallel)
+    "mult_par":      "dynamic,1",
+    "mult_par_opt":  "dynamic,1",
+    "dat_par":       "guided,16",
+    "dat_par_opt":   "dynamic,64",
+    "dat_par_ext":   "guided,16",
+    "dat_par_ult":   "dynamic,16",
+    "dat_par_ult_x": "dynamic,16"
+}
+
 # Build engine
 
 def rebuild_for_benchmark():

@@ -59,7 +59,7 @@ std::vector<match_result> dat_par_finder_ult_x(
         }
 
         // 4. LOAD BALANCING (Configurabile via Python tramite runtime)
-#pragma omp for schedule(dynamic, 16) nowait
+#pragma omp for schedule(runtime) nowait
         for (size_t i = 0; i < db_size; i++) {
             size_t ts_start = data_offsets[i];
             size_t ts_end = data_offsets[i + 1];

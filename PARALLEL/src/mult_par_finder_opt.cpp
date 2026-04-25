@@ -31,7 +31,7 @@ std::vector<match_result> mult_par_finder_opt(
 
     // 2. PARALLEL QUERY COMPUTATION (Query-Level Parallelism)
     // default(none)
-#pragma omp parallel for schedule(dynamic, 1) default(none) \
+#pragma omp parallel for schedule(runtime) default(none) \
     shared(num_queries, query_length, db_size, flat_queries_norm, flat_data, data_offsets, best_results)
     for (size_t q = 0; q < num_queries; q++) {
 

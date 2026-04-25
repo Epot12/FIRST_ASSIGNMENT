@@ -221,11 +221,6 @@ int main(int argc, char* argv[]) {
             cout << "\n";
         };
 
-        if (config.chunk_size > 0) {
-            omp_set_schedule(omp_sched_dynamic, config.chunk_size);
-            cout << "[Runtime] OpenMP schedule forced to dynamic, chunk_size=" << config.chunk_size << "\n\n";
-        }
-
         // 3. Computing phase (routing to algorithms)
         if (config.algo == "naive" || config.algo == "all" || config.algo == "both") {
             run_experiment("NAIVE_SEQUENTIAL", [&]() {

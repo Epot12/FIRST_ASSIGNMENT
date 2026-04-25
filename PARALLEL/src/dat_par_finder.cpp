@@ -45,7 +45,7 @@ std::vector<match_result> dat_par_finder(
             thread_best.series_id = -1;
             thread_best.start_index = 0;
 
-#pragma omp for schedule(dynamic, 16) nowait
+#pragma omp for schedule(runtime) nowait
             for (size_t i = 0; i < db_size; i++) {
                 size_t ts_start = data_offsets[i];
                 size_t ts_end = data_offsets[i + 1];
