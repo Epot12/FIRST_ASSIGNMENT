@@ -159,6 +159,8 @@ def phase1_raw_performance():
 # STRONG SCALING (AMDAHL)
 
 
+# STRONG SCALING (AMDAHL)
+
 def phase2_strong_scaling(target_ds: str):
     print("\n" + "="*60)
     print(f" PHASE 2: STRONG SCALING ON {target_ds}")
@@ -172,27 +174,28 @@ def phase2_strong_scaling(target_ds: str):
         current_t *= 2
 
     # time of the best sequential algorithm (Baseline)
-    t_sequential,_ = run_cpp_benchmark("opt", ds_path, 1)
+    t_sequential, _ = run_cpp_benchmark("opt", ds_path, 1)
     print(f"[BASELINE] Sequential Optimized Time: {t_sequential:.2f} ms")
 
-    t_naive, _ = run_cpp_benchmark("naive", ds_path, 1)
-    t_opt, _ = run_cpp_benchmark("opt", ds_path, 1)
+    plt.figure(figsize=(10, 6))
 
+    # 1. Disegna la linea diagonale di riferimento (Ideal Speedup)
+    plt.plot(threads_list, threads_list, linestyle='--', color='dimgray', label='Ideal Speedup')
+
+    # 2. Cicla sugli algoritmi, escludendo i sequenziali dal grafico
     for i, (algo, label) in enumerate(ALGOS_TO_TEST.items()):
         if algo in ["naive", "opt"]:
-            # Linea orizzontale basata sul tempo calcolato una volta
-            valore_fisso = t_sequential / (t_naive if algo == "naive" else t_opt)
-            plt.axhline(y=valore_fisso, color=COLORS[i], linestyle='--',
-                        label=f"{label} (Baseline Constant)")
-            continue
+            continue # I sequenziali servono solo come base di calcolo, non si plottano
 
-        # Per gli altri (paralleli), eseguiamo il test sui vari thread
+        # Calcola lo speedup per i vari thread
         speedups = []
         for t in threads_list:
             t_par, _ = run_cpp_benchmark(algo, ds_path, t)
             speedups.append(t_sequential / t_par if t_par > 0 else 0)
 
-        plt.plot(threads_list, speedups, marker='s', label=label)
+        # Disegna la linea dell'algoritmo parallelo con spessore e marker ben visibili
+        plt.plot(threads_list, speedups, marker='s', linewidth=2.5, markersize=8, label=label)
+
     # highlighting the limit of physical cores
     plt.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', alpha=0.8)
     plt.text(MAX_PHYSICAL_CORES + 0.5, 1, 'Physical Cores Limit', color='red', rotation=90, verticalalignment='bottom')
@@ -200,13 +203,20 @@ def phase2_strong_scaling(target_ds: str):
     plt.xlabel('Number of Threads', fontweight='bold')
     plt.ylabel('Speedup (T_seq / T_par)', fontweight='bold')
     plt.title(f"Strong Scaling (Amdahl's Law): {target_ds}", fontsize=16, pad=20)
-    plt.ylim(0, max(speedups) * 1.4)
+
+    # Scala l'asse Y per inquadrare perfettamente lo speedup ideale
+    plt.ylim(0, MAX_LOGICAL_CORES * 1.1)
+
     plt.legend(loc='best', fontsize=10, frameon=True, shadow=True, framealpha=0.85)
     plt.xticks(threads_list)
     plt.tight_layout()
-    plt.savefig(PLOTS_DIR / f'Scaling_{target_ds}_{TIMESTAMP}.pdf')
+
+    # Salvataggio dinamico con storico tramite TIMESTAMP
+    plot_file = PLOTS_DIR / f'Scaling_{target_ds}_{TIMESTAMP}.pdf'
+    plt.savefig(plot_file)
     plt.close()
 
+    print(f"[V] Plot saved in: {plot_file}")
 
 # PHASE 3: WEAK SCALING (GUSTAFSON)
 
