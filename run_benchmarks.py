@@ -31,6 +31,9 @@ TABLES_DIR.mkdir(exist_ok=True)
 sns.set_theme(style="whitegrid", context="paper", font_scale=1.4)
 COLORS = sns.color_palette("viridis", 6)
 
+# Generate a unique timestamp when the script starts (Format: YearMonthDay_HoursMinutesSeconds)
+TIMESTAMP = time.strftime("%Y%m%d_%H%M%S")
+
 # default variables
 DEFAULT_NUM_QUERIES = 20
 DEFAULT_QUERY_LENGTH = 128
@@ -149,7 +152,7 @@ def phase1_raw_performance():
         plt.ylabel('Execution Time (ms) - Lower is Better', fontweight='bold')
         plt.title(f"HPC Performance: {ds_name} (Threads: {MAX_LOGICAL_CORES})", fontsize=16, pad=20)
         plt.tight_layout()
-        plt.savefig(PLOTS_DIR / f'Perf_{ds_name}.pdf')
+        plt.savefig(PLOTS_DIR / f'Perf_{ds_name}_{TIMESTAMP}.pdf')
         plt.close()
 
 
@@ -201,7 +204,7 @@ def phase2_strong_scaling(target_ds: str):
     plt.legend(loc='best', fontsize=10, frameon=True, shadow=True, framealpha=0.85)
     plt.xticks(threads_list)
     plt.tight_layout()
-    plt.savefig(PLOTS_DIR / f'Scaling_{target_ds}.pdf')
+    plt.savefig(PLOTS_DIR / f'Scaling_{target_ds}_{TIMESTAMP}.pdf')
     plt.close()
 
 
@@ -257,7 +260,7 @@ def phase3_weak_scaling(target_ds: str):
     plt.xticks(threads_list)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(PLOTS_DIR / f'Phase3_Gustafson_{target_ds}.pdf')
+    plt.savefig(PLOTS_DIR / f'Phase3_Gustafson_{target_ds}_{TIMESTAMP}.pdf')
     plt.close()
 
 
@@ -334,7 +337,7 @@ def phase4_chunk_optimization(target_ds: str):
 
         # Salvataggio dinamico: aggiunge il nome dell'algoritmo al nome del file PDF
         # Evita che, se si sceglie "all", i grafici si sovrascrivano a vicenda
-        plt.savefig(PLOTS_DIR / f'Phase4_ChunkOpt_{target_algo}_{target_ds}.pdf')
+        plt.savefig(PLOTS_DIR / f'Phase4_ChunkOpt_{target_algo}_{target_ds}_{TIMESTAMP}.pdf')
         plt.close()
 
 
@@ -372,7 +375,7 @@ def phase5_deep_exploration(target_ds: str, deep_exploration: bool = True):
             print(f" Time: {t_mean:.2f} ms")
 
     # Idempotent Table Saving
-    table_file = TABLES_DIR / f'Table_Sensitivity_{target_ds}.txt'
+    table_file = TABLES_DIR / f'Table_Sensitivity_{target_ds}_{TIMESTAMP}.txt'
     with open(table_file, 'w') as f:
         f.write(f"SENSITIVITY ANALYSIS - {target_ds} ({ALGOS_TO_TEST[target_algo]} at {threads} Threads)\n")
         f.write("Columns: Query Length (64, 128, 256) | Rows: Number of Queries (10, 50, 100)\n\n")
@@ -398,9 +401,10 @@ def phase5_deep_exploration(target_ds: str, deep_exploration: bool = True):
 
     plt.tight_layout()
     # Idempotent saving and automatic overwriting in PDF vector format
-    plt.savefig(PLOTS_DIR / f'Phase5_DeepExploration_{target_ds}.pdf', format='pdf', bbox_inches='tight')
+    plot_file = PLOTS_DIR / f'Phase5_DeepExploration_{target_ds}_{TIMESTAMP}.pdf'
+    plt.savefig(plot_file, format='pdf', bbox_inches='tight')
     plt.close()
-    print(f"[V] Heatmap PDF saved in: {PLOTS_DIR / f'Phase5_DeepExploration_{target_ds}.pdf'}")
+    print(f"[V] Heatmap PDF saved in: {plot_file}")
 
 # MAIN EXECUTION
 
