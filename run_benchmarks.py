@@ -51,7 +51,8 @@ ALGOS_TO_TEST = {
     "mult_par": "Query Parallel (Locks)",
     "dat_par": "Data Parallel (Base)",
     "dat_par_ext": "Data Parallel (SIMD)",
-    "dat_par_ult": "Data Parallel (Lock-Free)"
+    "dat_par_ult": "Data Parallel (Lock-Free)",
+    "dat_par_ult_x": "Data Parallel (Lock-Free with alignas)"
 }
 
 ALGO_DEFAULTS = {
@@ -98,12 +99,16 @@ def rebuild_for_benchmark():
 def run_cpp_benchmark(algo: str, dataset_path: str, threads: int,
                       num_queries: int = DEFAULT_NUM_QUERIES,
                       query_length: int = DEFAULT_QUERY_LENGTH,
-                      limit: int = 0, chunk: int = 0): # Now returns (float, str)
-    """Runs the benchmark and captures the average Wall Time and Accuracy."""
+                      limit: int = 0, chunk: int = 0):
+    """
+    Esegue il benchmark C++ configurando l'ambiente OpenMP (Threads e Scheduling).
+    Ritorna una tupla (Wall Time Medio, Accuratezza string).
+    """
     if not os.path.exists(dataset_path):
-        print(f"[ERROR] Dataset not found: {dataset_path}")
+        print(f"[ERROR] Dataset non trovato: {dataset_path}")
         return 0.0, "0/0"
 
+    # Preparazione degli argomenti per l'eseguibile C++
     cmd = [
         str(EXEC_PATH),
         "--dataset", dataset_path,
@@ -113,26 +118,45 @@ def run_cpp_benchmark(algo: str, dataset_path: str, threads: int,
     ]
 
     if limit > 0: cmd.extend(["--limit", str(limit)])
-    if chunk > 0: cmd.extend(["--chunk", str(chunk)])
+    if chunk > 0: cmd.extend(["--chunk", str(chunk)]) # Passato anche come flag per log/statistiche C++
 
+    # Gestione delle variabili d'ambiente (Il "cuore" della comunicazione con OpenMP)
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(threads)
-    env["OMP_SCHEDULE"] = "dynamic"
+
+    # Recuperiamo la configurazione di scheduling predefinita
+    config_omp = ALGO_DEFAULTS.get(algo)
+
+    if config_omp: # Se l'algoritmo è uno di quelli paralleli
+        if chunk > 0:
+            # Se la Fase 4 sta forzando un chunk specifico per profilazione:
+            # Estraiamo la politica (es. 'guided') e iniettiamo il nuovo chunk
+            policy = config_omp.split(',')[0]
+            env["OMP_SCHEDULE"] = f"{policy},{chunk}"
+        else:
+            # Esecuzione standard: usiamo il miglior setup conosciuto
+            env["OMP_SCHEDULE"] = config_omp
+    else:
+        # Per i sequenziali o se non specificato, usiamo un default neutro
+        env["OMP_SCHEDULE"] = "static"
 
     try:
+        # Esecuzione del processo C++
         result = subprocess.run(cmd, env=env, capture_output=True, text=True, check=True)
 
-        # 1. Extracts time
+        # Parsing dell'output tramite Regex
+        # 1. Estrazione del Wall Time medio calcolato dal benchmark C++
         time_match = re.search(r"\[PYTHON_PARSE\] Wall Time_MEAN:\s+([\d.]+)", result.stdout)
         wall_time = float(time_match.group(1)) if time_match else 0.0
 
-        # 2. Extracts accuracy (e.g. search for "Accuracy: 20/20")
+        # 2. Estrazione dell'accuratezza (es. "Accuracy: 20/20")
         acc_match = re.search(r"Accuracy:\s+([0-9]+/[0-9]+)", result.stdout)
         accuracy = acc_match.group(1) if acc_match else "N/A"
 
         return wall_time, accuracy
+
     except subprocess.CalledProcessError as e:
-        print(f"[RUN ERROR] {algo} crashed: {e.stderr}")
+        print(f"[RUN ERROR] L'algoritmo {algo} è andato in crash: {e.stderr}")
         return 0.0, "ERROR"
 
 # Pure performance
