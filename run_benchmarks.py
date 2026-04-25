@@ -283,7 +283,7 @@ def phase4_chunk_optimization(target_ds: str):
     print("="*60)
 
     # Recupera dinamicamente le chiavi corrette dal dizionario globale
-    valid_algos = list(ALGOS_TO_TEST.keys())
+    valid_algos = [k for k in ALGOS_TO_TEST.keys() if k not in ["naive", "opt"]]
 
     print("\nSelect the algorithm to test for chunk optimization")
     print("  -> all (esegue tutti gli algoritmi in sequenza)")
