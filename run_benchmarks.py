@@ -272,7 +272,7 @@ def phase4_chunk_optimization(target_ds: str):
     ds_path = DATASETS[target_ds]
     chunk_sizes = [1, 2, 4, 8, 16, 32, 64, 128]
 
-    target_algo = "dat_par_ult" # testing best algorithm
+    target_algo = "dat_par_ext" # testing best algorithm
     threads = MAX_LOGICAL_CORES
 
     times = []
