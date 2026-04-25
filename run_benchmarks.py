@@ -277,76 +277,75 @@ def phase3_weak_scaling(target_ds: str):
 
 # PHASE 4: GRANULARITY PROFILING (CHUNK SIZE)
 
-def phase4_chunk_optimization(target_ds: str):
+def phase4_chunk_optimization(target_ds: str, interactive: bool = True):
     print("\n" + "="*60)
     print(f" PHASE 4: CHUNK SIZE OPTIMIZATION ON {target_ds}")
     print("="*60)
 
-    # Recupera dinamicamente le chiavi corrette dal dizionario globale
+    # 1. Filtro: Esci se l'utente prova a profilare sequenziali (non ha senso tecnico)
+    # Prendiamo solo le chiavi che NON sono 'naive' o 'opt'
     valid_algos = [k for k in ALGOS_TO_TEST.keys() if k not in ["naive", "opt"]]
 
-    print("\nSelect the algorithm to test for chunk optimization")
-    print("  -> all (esegue tutti gli algoritmi in sequenza)")
-    print("  -> (oppure inserisci più algoritmi separati da virgola)")
-    for algo in valid_algos:
-        print(f"  -> {algo}")
-
     algos_to_run = []
-    while True:
-        scelta = input("\nInserisci i nomi separati da virgola, o 'all': ").strip()
 
-        # Caso 1: Esegue tutto
-        if scelta == "all":
-            algos_to_run = valid_algos
-            break
+    # 2. Logica Pipeline vs Manuale
+    if not interactive:
+        print("[PIPELINE MODE] Selezione automatica di default: dat_par_ult")
+        algos_to_run = ["dat_par_ult"]
+    else:
+        print("\nSeleziona l'algoritmo parallelo da testare:")
+        print("  -> all (esegue tutti gli algoritmi paralleli)")
+        for algo in valid_algos:
+            print(f"  -> {algo}")
 
-        # Caso 2: Divide l'input dell'utente usando la virgola e pulisce gli spazi
-        scelte_multiple = [s.strip() for s in scelta.split(",") if s.strip()]
+        while True:
+            scelta = input("\nInserisci i nomi separati da virgola, o 'all': ").strip()
 
-        # Controlla che l'utente abbia inserito qualcosa e che TUTTI i nomi siano validi
-        if len(scelte_multiple) > 0 and all(s in valid_algos for s in scelte_multiple):
-            algos_to_run = scelte_multiple
-            break
-        else:
-            print("[!] Errore: uno o più nomi non sono validi. Controlla l'ortografia e usa la virgola.")
+            if scelta == "all":
+                algos_to_run = valid_algos
+                break
+
+            scelte_multiple = [s.strip() for s in scelta.split(",") if s.strip()]
+
+            # Controllo validità: devono essere algoritmi paralleli esistenti
+            if scelte_multiple and all(s in valid_algos for s in scelte_multiple):
+                algos_to_run = scelte_multiple
+                break
+            else:
+                print("[!] Errore: nomi non validi o algoritmi sequenziali inseriti. Riprova.")
 
     ds_path = DATASETS[target_ds]
     chunk_sizes = [1, 2, 4, 8, 16, 32, 64, 128]
     threads = MAX_LOGICAL_CORES
 
-    # Avvolgiamo la logica precedente in un ciclo for per gestire le scelte multiple
     for target_algo in algos_to_run:
         times = []
-
-        # Recupera la label per il grafico (se non esiste nel dizionario base, usa il nome del file)
         algo_label = ALGOS_TO_TEST.get(target_algo, target_algo.upper())
-
         print(f"\n--- Granularity Scan: {algo_label} at {threads} threads ---")
 
         for c in chunk_sizes:
-            time,_ = run_cpp_benchmark(target_algo, ds_path, threads=threads, chunk=c)
-            times.append(time)
-            print(f"  Chunk Size: {c:>3} | Time: {time:.2f} ms")
+            time_val, _ = run_cpp_benchmark(target_algo, ds_path, threads=threads, chunk=c)
+            times.append(time_val)
+            print(f"  Chunk Size: {c:>3} | Time: {time_val:.2f} ms")
 
         best_time = min(times)
         best_chunk = chunk_sizes[times.index(best_time)]
         print(f"\n[V] Optimal Chunk for {algo_label}: {best_chunk} (Time: {best_time:.2f} ms)")
 
+        # Plotting
         plt.figure(figsize=(10, 6))
         plt.plot(chunk_sizes, times, marker='o', color=COLORS[3], linewidth=2.5)
         plt.plot(best_chunk, best_time, marker='*', markersize=15, color='red', label=f'Best Chunk: {best_chunk}')
 
         plt.xlabel('OpenMP Dynamic Chunk Size', fontweight='bold')
         plt.ylabel('Execution Time (ms) - Lower is Better', fontweight='bold')
-        # Aggiunto il nome dell'algoritmo nel titolo per riconoscerlo
-        plt.title(f"Granularity Profiling on {target_ds} ({threads} Threads)\nAlgorithm: {algo_label}", fontsize=14)
+        plt.title(f"Granularity Profiling: {algo_label}\nDataset: {target_ds}", fontsize=14)
         plt.xscale('log', base=2)
         plt.xticks(chunk_sizes, labels=chunk_sizes)
         plt.legend()
         plt.tight_layout()
 
-        # Salvataggio dinamico: aggiunge il nome dell'algoritmo al nome del file PDF
-        # Evita che, se si sceglie "all", i grafici si sovrascrivano a vicenda
+        # Salvataggio univoco con Algorithm Name e TIMESTAMP
         plt.savefig(PLOTS_DIR / f'Phase4_ChunkOpt_{target_algo}_{target_ds}_{TIMESTAMP}.pdf')
         plt.close()
 
@@ -469,7 +468,10 @@ if __name__ == "__main__":
 
     # Phase 4: Chunk Size Optimization (Granularity)
     if run_p4:
-        phase4_chunk_optimization("StarLightCurves")
+        # Se la fase 4 è parte di --all, non è interattiva (va in automatico)
+        # Se è chiamata singolarmente con --p4, abilita il menu
+        is_interactive = not args.all
+        phase4_chunk_optimization("StarLightCurves", interactive=is_interactive)
 
     # Phase 5: Sensitivity Map (Deep Exploration)
     if run_p5:
