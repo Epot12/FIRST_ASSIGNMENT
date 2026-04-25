@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.27)
 project(FIRST_ASSIGNMENT)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(USE_ASAN "Activating AddressSanitizer (Memory Check)" OFF)
 option(USE_TSAN "Activating ThreadSanitizer (Concurrency Check)" OFF)
@@ -56,6 +58,8 @@ add_executable(FIRST_ASSIGNMENT
         PARALLEL/src/dat_par_finder_ult.cpp
         PARALLEL/headers/dat_par_finder_ult.h
         PARALLEL/headers/dat_par_finder_ult.h
+        PARALLEL/src/dat_par_finder_ult_x.cpp
+        PARALLEL/headers/dat_par_finder_ult_x.h
 )
 
 if(OpenMP_CXX_FOUND)

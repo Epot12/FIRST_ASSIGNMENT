@@ -23,7 +23,7 @@ std::vector<match_result> par_finder(
     std::vector<real_t> flat_queries_norm(flat_queries.size());
 
     // Parallel query batch normalization
-#pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(guided, 256)
     for (size_t q = 0; q < num_queries; q++) {
         size_t offset = q * query_length;
         // passing the starting address of the query and its length
@@ -61,7 +61,7 @@ std::vector<match_result> par_finder(
 
                 // DISTRIBUTION OF WINDOWS BETWEEN THREADS
 
-#pragma omp for schedule(runtime) nowait
+#pragma omp for schedule(guided, 256) nowait
                 for (size_t w = 0; w < num_windows; w++) {
 
                     size_t window_start_idx = ts_start + w;
