@@ -261,79 +261,212 @@ def phase2_strong_scaling(target_ds: str):
 # PHASE 3: WEAK SCALING (GUSTAFSON)
 
 def phase3_weak_scaling(target_ds: str):
-    print("\n" + "="*60)
-    print(f" PHASE 3: WEAK SCALING (GUSTAFSON) ON {target_ds}")
-    print("="*60)
+    print("\n" + "=" * 60)
+    print(f" PHASE 3: WEAK SCALING ANALYSIS ON {target_ds}")
+    print("=" * 60)
 
     ds_path = DATASETS[target_ds]
 
+    # Powers of two thread counts
     threads_list = []
-    current_t = 1
-    while current_t <= MAX_LOGICAL_CORES:
-        threads_list.append(current_t)
-        current_t *= 2
+    t = 1
+    while t <= MAX_LOGICAL_CORES:
+        threads_list.append(t)
+        t *= 2
 
-    base_limit = 500  # Basic problem size for 1 thread
+    # Base workload for 1 thread
+    base_limit = 500
 
+    # Parallel algorithms only
+    parallel_algos = {
+        k: v for k, v in ALGOS_TO_TEST.items()
+        if k not in ["naive", "opt"]
+    }
+
+    # ==========================================================
+    # FIGURE 1 : WEAK SCALING EFFICIENCY
+    # ==========================================================
     plt.figure(figsize=(10, 6))
 
-    # Linea ideale per Gustafson: diagonale y = x
-    plt.plot(threads_list, threads_list, color='gray', linestyle='--', linewidth=2, label='Ideal Scaled Speedup')
+    # Ideal line
+    plt.axhline(
+        y=1.0,
+        color='gray',
+        linestyle='--',
+        linewidth=2,
+        label='Ideal Efficiency'
+    )
 
-    for i, (algo, label) in enumerate(ALGOS_TO_TEST.items()):
-        speedups = []
+    for algo, label in parallel_algos.items():
 
-        # Calcoliamo il tempo al carico base (t1) con 1 thread
-        t1, _ = run_cpp_benchmark(algo, ds_path, threads=1, limit=base_limit)
+        efficiencies = []
 
-        # Lo speedup a 1 thread per il carico base è sempre 1 (ideale)
-        speedups.append(1.0)
+        # Baseline time at 1 thread with base workload
+        T1, _ = run_cpp_benchmark(
+            algo,
+            ds_path,
+            threads=1,
+            limit=base_limit
+        )
 
-        for t in threads_list[1:]:
-            current_limit = base_limit * t
+        efficiencies.append(1.0)
 
-            if algo in ["naive", "opt"]:
-                # Per i sequenziali, il tempo scala linearmente con il carico.
-                # Lo Scaled Speedup sequenziale ideale è 1 (nessun guadagno scalando l'hardware).
-                scaled_speedup = 1.0
-            else:
-                # Per i paralleli, testiamo il carico proporzionalmente maggiorato
-                tN, _ = run_cpp_benchmark(algo, ds_path, threads=t, limit=current_limit)
+        print(f"\n[{label}]")
+        print(f"  T1 (1 thread, workload={base_limit}) = {T1:.3f} ms")
 
-                # Calcolo Gustafson Scaled Speedup: (T1 / TN) * N
-                scaled_speedup = (t1 / tN) * t if tN > 0 else 0
+        for n in threads_list[1:]:
 
-            speedups.append(scaled_speedup)
+            scaled_workload = base_limit * n
 
-        plt.plot(threads_list, speedups, marker='^', label=label)
+            TN, _ = run_cpp_benchmark(
+                algo,
+                ds_path,
+                threads=n,
+                limit=scaled_workload
+            )
 
-    # Evidenziazione del limite dei core fisici
-    plt.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', alpha=0.8)
-    plt.text(MAX_PHYSICAL_CORES + 0.5, 1, 'Physical Cores Limit', color='red', rotation=90, verticalalignment='bottom')
+            Ew = (T1 / TN) if TN > 0 else 0.0
+            efficiencies.append(Ew)
 
-    # Estetica del grafico (allineata a img170)
-    plt.xlabel('Number of Threads (Proportional Workload)', fontweight='bold')
-    plt.ylabel('Scaled Speedup (T_seq_scaled / Tn_scaled)', fontweight='bold')
-    plt.title(f"Weak Scaling (Gustafson's Law): {target_ds}", fontsize=16, pad=20)
+            print(
+                f"  Threads={n:>2} | "
+                f"Workload={scaled_workload:>5} | "
+                f"TN={TN:>8.3f} ms | "
+                f"Ew={Ew:.3f}"
+            )
 
-    # Lo speedup scala fino al numero logico di core, impostiamo un piccolo margine (1.1)
-    plt.ylim(0, MAX_LOGICAL_CORES * 1.1)
+        plt.plot(
+            threads_list,
+            efficiencies,
+            marker='o',
+            linewidth=2.5,
+            markersize=7,
+            label=label
+        )
+
+    # Physical core marker
+    plt.axvline(
+        x=MAX_PHYSICAL_CORES,
+        color='red',
+        linestyle=':',
+        alpha=0.8
+    )
+
+    plt.text(
+        MAX_PHYSICAL_CORES + 0.3,
+        0.85,
+        'Physical Cores Limit',
+        color='red',
+        rotation=90,
+        va='bottom'
+    )
+
+    plt.xlabel("Number of Threads", fontweight='bold')
+    plt.ylabel("Weak Scaling Efficiency  $E_w(N)=T_1/T_N$", fontweight='bold')
+    plt.title(
+        f"Weak Scaling Efficiency: {target_ds}",
+        fontsize=16,
+        pad=20
+    )
+
     plt.xticks(threads_list)
-
-    # Leggenda migliorata (analoga allo Strong Scaling)
-    plt.legend(loc='best', fontsize=10, frameon=True, shadow=True, framealpha=0.85)
+    plt.ylim(0, 1.15)
+    plt.legend(loc='best', fontsize=10, frameon=True)
     plt.tight_layout()
 
-    # Salvataggio con nome aggiornato per evitare sovrascritture o confusioni
-    base_filename = PLOTS_DIR / f'ScaledSpeedup_Gustafson_{target_ds}_{TIMESTAMP}'
-
-    # 1. Salva in PDF (Vettoriale, risoluzione infinita)
-    # bbox_inches='tight' rimuove lo spazio bianco inutile intorno al grafico
-    plot_file_pdf = f"{base_filename}.pdf"
-    plt.savefig(plot_file_pdf, format='pdf', bbox_inches='tight')
+    file_eff = PLOTS_DIR / f"WeakScalingEfficiency_{target_ds}_{TIMESTAMP}.pdf"
+    plt.savefig(file_eff, format='pdf', bbox_inches='tight')
     plt.close()
-    print(f"[V] Plot saved in: {plot_file_pdf}")
 
+    print(f"\n[V] Weak scaling efficiency plot saved in: {file_eff}")
+
+    # ==========================================================
+    # FIGURE 2 : GUSTAFSON ESTIMATED SPEEDUP
+    # ==========================================================
+    plt.figure(figsize=(10, 6))
+
+    # Ideal line y = x
+    plt.plot(
+        threads_list,
+        threads_list,
+        linestyle='--',
+        color='gray',
+        linewidth=2,
+        label='Ideal Scaled Speedup'
+    )
+
+    for algo, label in parallel_algos.items():
+
+        gustafson_speedups = []
+
+        T1, _ = run_cpp_benchmark(
+            algo,
+            ds_path,
+            threads=1,
+            limit=base_limit
+        )
+
+        gustafson_speedups.append(1.0)
+
+        for n in threads_list[1:]:
+
+            scaled_workload = base_limit * n
+
+            TN, _ = run_cpp_benchmark(
+                algo,
+                ds_path,
+                threads=n,
+                limit=scaled_workload
+            )
+
+            Ew = (T1 / TN) if TN > 0 else 0.0
+            Sg = n * Ew
+
+            gustafson_speedups.append(Sg)
+
+        plt.plot(
+            threads_list,
+            gustafson_speedups,
+            marker='s',
+            linewidth=2.5,
+            markersize=7,
+            label=label
+        )
+
+    plt.axvline(
+        x=MAX_PHYSICAL_CORES,
+        color='red',
+        linestyle=':',
+        alpha=0.8
+    )
+
+    plt.text(
+        MAX_PHYSICAL_CORES + 0.3,
+        1.0,
+        'Physical Cores Limit',
+        color='red',
+        rotation=90,
+        va='bottom'
+    )
+
+    plt.xlabel("Number of Threads", fontweight='bold')
+    plt.ylabel("Scaled Speedup  $S(N)=N\\cdot T_1/T_N$", fontweight='bold')
+    plt.title(
+        f"Gustafson-Inspired Scaled Speedup: {target_ds}",
+        fontsize=16,
+        pad=20
+    )
+
+    plt.xticks(threads_list)
+    plt.ylim(0, MAX_LOGICAL_CORES * 1.1)
+    plt.legend(loc='best', fontsize=10, frameon=True)
+    plt.tight_layout()
+
+    file_speed = PLOTS_DIR / f"GustafsonScaledSpeedup_{target_ds}_{TIMESTAMP}.pdf"
+    plt.savefig(file_speed, format='pdf', bbox_inches='tight')
+    plt.close()
+
+    print(f"[V] Gustafson scaled speedup plot saved in: {file_speed}")
 
 
 # PHASE 4: GRANULARITY PROFILING (CHUNK SIZE)
