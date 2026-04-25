@@ -269,37 +269,73 @@ def phase4_chunk_optimization(target_ds: str):
     print(f" PHASE 4: CHUNK SIZE OPTIMIZATION ON {target_ds}")
     print("="*60)
 
+    # Recupera dinamicamente le chiavi corrette dal dizionario globale
+    valid_algos = list(ALGOS_TO_TEST.keys())
+
+    print("\nSelect the algorithm to test for chunk optimization")
+    print("  -> all (esegue tutti gli algoritmi in sequenza)")
+    print("  -> (oppure inserisci più algoritmi separati da virgola)")
+    for algo in valid_algos:
+        print(f"  -> {algo}")
+
+    algos_to_run = []
+    while True:
+        scelta = input("\nInserisci i nomi separati da virgola, o 'all': ").strip()
+
+        # Caso 1: Esegue tutto
+        if scelta == "all":
+            algos_to_run = valid_algos
+            break
+
+        # Caso 2: Divide l'input dell'utente usando la virgola e pulisce gli spazi
+        scelte_multiple = [s.strip() for s in scelta.split(",") if s.strip()]
+
+        # Controlla che l'utente abbia inserito qualcosa e che TUTTI i nomi siano validi
+        if len(scelte_multiple) > 0 and all(s in valid_algos for s in scelte_multiple):
+            algos_to_run = scelte_multiple
+            break
+        else:
+            print("[!] Errore: uno o più nomi non sono validi. Controlla l'ortografia e usa la virgola.")
+
     ds_path = DATASETS[target_ds]
     chunk_sizes = [1, 2, 4, 8, 16, 32, 64, 128]
-
-    target_algo = "dat_par_ext" # testing best algorithm
     threads = MAX_LOGICAL_CORES
 
-    times = []
-    print(f"\n--- Granularity Scan: {ALGOS_TO_TEST[target_algo]} at {threads} threads ---")
+    # Avvolgiamo la logica precedente in un ciclo for per gestire le scelte multiple
+    for target_algo in algos_to_run:
+        times = []
 
-    for c in chunk_sizes:
-        time,_ = run_cpp_benchmark(target_algo, ds_path, threads=threads, chunk=c)
-        times.append(time)
-        print(f"  Chunk Size: {c:>3} | Time: {time:.2f} ms")
+        # Recupera la label per il grafico (se non esiste nel dizionario base, usa il nome del file)
+        algo_label = ALGOS_TO_TEST.get(target_algo, target_algo.upper())
 
-    best_time = min(times)
-    best_chunk = chunk_sizes[times.index(best_time)]
-    print(f"\n[V] Optimal Chunk: {best_chunk} (Time: {best_time:.2f} ms)")
+        print(f"\n--- Granularity Scan: {algo_label} at {threads} threads ---")
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(chunk_sizes, times, marker='o', color=COLORS[3], linewidth=2.5)
-    plt.plot(best_chunk, best_time, marker='*', markersize=15, color='red', label=f'Best Chunk: {best_chunk}')
+        for c in chunk_sizes:
+            time,_ = run_cpp_benchmark(target_algo, ds_path, threads=threads, chunk=c)
+            times.append(time)
+            print(f"  Chunk Size: {c:>3} | Time: {time:.2f} ms")
 
-    plt.xlabel('OpenMP Dynamic Chunk Size', fontweight='bold')
-    plt.ylabel('Execution Time (ms) - Lower is Better', fontweight='bold')
-    plt.title(f"Granularity Profiling on {target_ds} ({threads} Threads)", fontsize=14)
-    plt.xscale('log', base=2)
-    plt.xticks(chunk_sizes, labels=chunk_sizes)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(PLOTS_DIR / f'Phase4_ChunkOpt_{target_ds}.pdf')
-    plt.close()
+        best_time = min(times)
+        best_chunk = chunk_sizes[times.index(best_time)]
+        print(f"\n[V] Optimal Chunk for {algo_label}: {best_chunk} (Time: {best_time:.2f} ms)")
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(chunk_sizes, times, marker='o', color=COLORS[3], linewidth=2.5)
+        plt.plot(best_chunk, best_time, marker='*', markersize=15, color='red', label=f'Best Chunk: {best_chunk}')
+
+        plt.xlabel('OpenMP Dynamic Chunk Size', fontweight='bold')
+        plt.ylabel('Execution Time (ms) - Lower is Better', fontweight='bold')
+        # Aggiunto il nome dell'algoritmo nel titolo per riconoscerlo
+        plt.title(f"Granularity Profiling on {target_ds} ({threads} Threads)\nAlgorithm: {algo_label}", fontsize=14)
+        plt.xscale('log', base=2)
+        plt.xticks(chunk_sizes, labels=chunk_sizes)
+        plt.legend()
+        plt.tight_layout()
+
+        # Salvataggio dinamico: aggiunge il nome dell'algoritmo al nome del file PDF
+        # Evita che, se si sceglie "all", i grafici si sovrascrivano a vicenda
+        plt.savefig(PLOTS_DIR / f'Phase4_ChunkOpt_{target_algo}_{target_ds}.pdf')
+        plt.close()
 
 
 # PHASE 5: DEEP EXPLORATION (SENSITIVITY ANALYSIS)
