@@ -5,6 +5,7 @@ import sys
 import time
 import argparse
 import shutil
+import psutil
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -37,8 +38,10 @@ TIMESTAMP = time.strftime("%Y%m%d_%H%M%S")
 # default variables
 DEFAULT_NUM_QUERIES = 20
 DEFAULT_QUERY_LENGTH = 128
-MAX_PHYSICAL_CORES = 4
-MAX_LOGICAL_CORES = MAX_PHYSICAL_CORES * 2
+MAX_PHYSICAL_CORES = psutil.cpu_count(logical=False) or 4
+MAX_LOGICAL_CORES = psutil.cpu_count(logical=True) or (MAX_PHYSICAL_CORES * 2)
+
+print(f"[SYSTEM] Found {MAX_PHYSICAL_CORES} physical cores and {MAX_LOGICAL_CORES} logical cores.")
 
 # algorithms: key (C++) -> Label (plot)
 # optimized sequential is baseline reference
