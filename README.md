@@ -23,6 +23,7 @@ This project utilizes **`uv`** as the primary Python package and project manager
 ### Step 1: Clone the Repository
 ```bash
 git clone https://github.com/Epot12/FIRST_ASSIGNMENT.git
+cd FIRST_ASSIGNMENT
 ```
 
 ### Step 2: Python Environment Setup
@@ -34,8 +35,14 @@ This project utilizes **`uv`** as the primary package manager to ensure determin
 # Create a virtual environment
 uv sync
 ```
+#### Option B 
 Otherwise, use pip install.
 ```bash
+# Create a virtual environment
+python3 -m venv .venv
+
+# Activate the virtual environment
+source .venv/bin/activate
 # Install dependencies from requirements
 pip install -r requirements.txt
 ```
@@ -46,3 +53,8 @@ To run the project use
 uv run python run_benchmarks.py
 ```
 in the project folder. A menu will be displayed explaining the options.
+If you used Option B, run with the following command.
+```bash
+python run_benchmarks.py
+```
+You do not need to manually compile the C++ source code. The orchestration script handles the build process automatically using CMake before running the benchmarks.
