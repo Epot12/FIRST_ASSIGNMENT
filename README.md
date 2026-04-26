@@ -36,25 +36,32 @@ This project utilizes **`uv`** as the primary package manager to ensure determin
 uv sync
 ```
 #### Option B 
-Otherwise, use pip install.
+uv needs to be installed to manage the dependencies of this project.
 ```bash
-# Create a virtual environment
-python3 -m venv .venv
+# Linux and macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Activate the virtual environment
-source .venv/bin/activate
-# Install dependencies from requirements
-pip install -r requirements.txt
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 ## Running the project
+### Downloading data
+- To download datasets and create synthetic data run
+```bash
+uv run python automation_scripts/setup_datasets.py
+```
+in the project folder.
+### Running benchmarks
 To run the project use 
 ```bash
 uv run python run_benchmarks.py
 ```
 in the project folder. A menu will be displayed explaining the options.
-If you used Option B, run with the following command.
-```bash
-python run_benchmarks.py
-```
 You do not need to manually compile the C++ source code. The orchestration script handles the build process automatically using CMake before running the benchmarks.
+The proposed options are the following:
+- --p1: runs all the algorithms measuring wall clock time and CPU time
+- --p2: runs experiments proving Amdahl's law
+- --p3: 
+
+
