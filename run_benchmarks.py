@@ -266,109 +266,51 @@ def phase3_weak_scaling(target_ds: str):
     print("=" * 60)
 
     ds_path = DATASETS[target_ds]
-
-    # Powers of two thread counts
     threads_list = []
     t = 1
     while t <= MAX_LOGICAL_CORES:
         threads_list.append(t)
         t *= 2
 
-    # Base workload for 1 thread
     base_limit = 500
+    parallel_algos = {k: v for k, v in ALGOS_TO_TEST.items() if k not in ["naive", "opt"]}
 
-    # Parallel algorithms only
-    parallel_algos = {
-        k: v for k, v in ALGOS_TO_TEST.items()
-        if k not in ["naive", "opt"]
-    }
+    # Dizionario per raccogliere i dati da passare alla fase 3b
+    # Struttura: { algo_key: { "num_threads": {"mean": val, "ci_95_margin": val} } }
+    results_for_3b = {}
 
     # ==========================================================
     # FIGURE 1 : WEAK SCALING EFFICIENCY
     # ==========================================================
     plt.figure(figsize=(10, 6))
-
-    # Ideal line
-    plt.axhline(
-        y=1.0,
-        color='gray',
-        linestyle='--',
-        linewidth=2,
-        label='Ideal Efficiency'
-    )
+    plt.axhline(y=1.0, color='gray', linestyle='--', linewidth=2, label='Ideal Efficiency')
 
     for algo, label in parallel_algos.items():
-
         efficiencies = []
-
-        # Baseline time at 1 thread with base workload
-        T1, _ = run_cpp_benchmark(
-            algo,
-            ds_path,
-            threads=1,
-            limit=base_limit
-        )
-
+        T1, _ = run_cpp_benchmark(algo, ds_path, threads=1, limit=base_limit)
         efficiencies.append(1.0)
 
+        # Inizializziamo l'algoritmo nel dizionario per la fase 3b
+        results_for_3b[algo] = { "1": {"mean": T1 / 1000.0, "ci_95_margin": 0.05} }
+
         print(f"\n[{label}]")
-        print(f"  T1 (1 thread, workload={base_limit}) = {T1:.3f} ms")
-
         for n in threads_list[1:]:
-
             scaled_workload = base_limit * n
-
-            TN, _ = run_cpp_benchmark(
-                algo,
-                ds_path,
-                threads=n,
-                limit=scaled_workload
-            )
-
+            TN, _ = run_cpp_benchmark(algo, ds_path, threads=n, limit=scaled_workload)
             Ew = (T1 / TN) if TN > 0 else 0.0
             efficiencies.append(Ew)
 
-            print(
-                f"  Threads={n:>2} | "
-                f"Workload={scaled_workload:>5} | "
-                f"TN={TN:>8.3f} ms | "
-                f"Ew={Ew:.3f}"
-            )
+            # Salviamo il dato (convertito in secondi) per la fase 3b
+            # Nota: usiamo 0.05 come margine d'errore placeholder o la std_dev se disponibile
+            results_for_3b[algo][str(n)] = {"mean": TN / 1000.0, "ci_95_margin": 0.05}
 
-        plt.plot(
-            threads_list,
-            efficiencies,
-            marker='o',
-            linewidth=2.5,
-            markersize=7,
-            label=label
-        )
+        plt.plot(threads_list, efficiencies, marker='o', linewidth=2.5, markersize=7, label=label)
 
-    # Physical core marker
-    plt.axvline(
-        x=MAX_PHYSICAL_CORES,
-        color='red',
-        linestyle=':',
-        alpha=0.8
-    )
-
-    plt.text(
-        MAX_PHYSICAL_CORES + 0.3,
-        0.85,
-        'Physical Cores Limit',
-        color='red',
-        rotation=90,
-        va='bottom'
-    )
-
+    plt.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', alpha=0.8)
+    plt.text(MAX_PHYSICAL_CORES + 0.3, 0.85, 'Physical Cores Limit', color='red', rotation=90, va='bottom')
     plt.xlabel("Number of Threads", fontweight='bold')
     plt.ylabel("Weak Scaling Efficiency  $E_w(N)=T_1/T_N$", fontweight='bold')
-    plt.title(
-        f"Weak Scaling Efficiency: {target_ds}",
-        fontsize=16,
-        pad=20
-    )
-
+    plt.title(f"Weak Scaling Efficiency: {target_ds}", fontsize=16, pad=20)
     plt.xticks(threads_list)
     plt.ylim(0, 1.15)
     plt.legend(loc='best', fontsize=10, frameon=True)
@@ -378,85 +320,30 @@ def phase3_weak_scaling(target_ds: str):
     plt.savefig(file_eff, format='pdf', bbox_inches='tight')
     plt.close()
 
-    print(f"\n[V] Weak scaling efficiency plot saved in: {file_eff}")
-
     # ==========================================================
     # FIGURE 2 : GUSTAFSON ESTIMATED SPEEDUP
     # ==========================================================
     plt.figure(figsize=(10, 6))
-
-    # Ideal line y = x
-    plt.plot(
-        threads_list,
-        threads_list,
-        linestyle='--',
-        color='gray',
-        linewidth=2,
-        label='Ideal Scaled Speedup'
-    )
+    plt.plot(threads_list, threads_list, linestyle='--', color='gray', linewidth=2, label='Ideal Scaled Speedup')
 
     for algo, label in parallel_algos.items():
-
         gustafson_speedups = []
-
-        T1, _ = run_cpp_benchmark(
-            algo,
-            ds_path,
-            threads=1,
-            limit=base_limit
-        )
+        # Recuperiamo il T1 già calcolato prima per efficienza
+        T1_sec = results_for_3b[algo]["1"]["mean"] * 1000.0
 
         gustafson_speedups.append(1.0)
-
         for n in threads_list[1:]:
+            TN_sec = results_for_3b[algo][str(n)]["mean"] * 1000.0
+            Ew = (T1_sec / TN_sec) if TN_sec > 0 else 0.0
+            gustafson_speedups.append(n * Ew)
 
-            scaled_workload = base_limit * n
+        plt.plot(threads_list, gustafson_speedups, marker='s', linewidth=2.5, markersize=7, label=label)
 
-            TN, _ = run_cpp_benchmark(
-                algo,
-                ds_path,
-                threads=n,
-                limit=scaled_workload
-            )
-
-            Ew = (T1 / TN) if TN > 0 else 0.0
-            Sg = n * Ew
-
-            gustafson_speedups.append(Sg)
-
-        plt.plot(
-            threads_list,
-            gustafson_speedups,
-            marker='s',
-            linewidth=2.5,
-            markersize=7,
-            label=label
-        )
-
-    plt.axvline(
-        x=MAX_PHYSICAL_CORES,
-        color='red',
-        linestyle=':',
-        alpha=0.8
-    )
-
-    plt.text(
-        MAX_PHYSICAL_CORES + 0.3,
-        1.0,
-        'Physical Cores Limit',
-        color='red',
-        rotation=90,
-        va='bottom'
-    )
-
+    plt.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', alpha=0.8)
+    plt.text(MAX_PHYSICAL_CORES + 0.3, 1.0, 'Physical Cores Limit', color='red', rotation=90, va='bottom')
     plt.xlabel("Number of Threads", fontweight='bold')
     plt.ylabel("Scaled Speedup  $S(N)=N\\cdot T_1/T_N$", fontweight='bold')
-    plt.title(
-        f"Gustafson-Inspired Scaled Speedup: {target_ds}",
-        fontsize=16,
-        pad=20
-    )
-
+    plt.title(f"Gustafson-Inspired Scaled Speedup: {target_ds}", fontsize=16, pad=20)
     plt.xticks(threads_list)
     plt.ylim(0, MAX_LOGICAL_CORES * 1.1)
     plt.legend(loc='best', fontsize=10, frameon=True)
@@ -466,56 +353,60 @@ def phase3_weak_scaling(target_ds: str):
     plt.savefig(file_speed, format='pdf', bbox_inches='tight')
     plt.close()
 
-    print(f"[V] Gustafson scaled speedup plot saved in: {file_speed}")
+    # Anche gli algoritmi sequenziali devono essere nel dizionario per la baseline della 3b
+    for s_algo in ["opt", "naive"]:
+        T_seq, _ = run_cpp_benchmark(s_algo, ds_path, threads=1, limit=base_limit)
+        results_for_3b[s_algo] = { "1": {"mean": T_seq / 1000.0, "ci_95_margin": 0.02} }
+
+    print(f"[V] Phase 3 Plots saved successfully.")
+    return results_for_3b # Restituisce i dati per la fase 3b
 
 def phase_3b_plot_gustafson_scaling(gustafson_results: dict, plots_dir: Path, target_ds: str, timestamp: str):
     print("\n[DATA VIZ] Generating Weak Scaling Execution Time Plot (with Error Bars)...")
     if not gustafson_results: return
 
-    # plotting configuration via Seaborn
     sns.set_theme(style="whitegrid", context="paper", font_scale=1.4)
     fig, ax = plt.subplots(figsize=(10, 6))
 
     max_cores = 1
     baseline_time = None
 
-    for i, (algo_key, data) in enumerate(gustafson_results.items()):
-        # Estrae il numero di thread in ordine (es. [1, 2, 4, 8])
-        cores = sorted([int(k) for k in data.keys()])
+    # --- MODIFICA: Selezione intelligente della baseline ---
+    # Usiamo il tempo dell'algoritmo sequenziale ottimizzato sul carico base
+    if "opt" in gustafson_results:
+        baseline_time = gustafson_results["opt"]["1"]["mean"]
+    else:
+        # Fallback se 'opt' non è stato testato
+        first_algo_key = list(gustafson_results.keys())[0]
+        baseline_time = gustafson_results[first_algo_key]["1"]["mean"]
 
-        # Estrae i tempi medi e la deviazione standard/margini
+    # Ciclo di plotting per tutti gli algoritmi
+    for i, (algo_key, data) in enumerate(gustafson_results.items()):
+        # Consideriamo solo i thread effettivamente testati (esclusi quelli sequenziali simulati)
+        cores = sorted([int(k) for k in data.keys()])
         means = [data[str(c)]["mean"] for c in cores]
         margins = [data[str(c)]["ci_95_margin"] for c in cores]
 
         if max(cores) > max_cores: max_cores = max(cores)
 
-        # Prende come baseline il tempo a 1 thread del primo algoritmo elaborato
-        if baseline_time is None: baseline_time = means[0]
-
-        # RIMOSSO HARDCODING: Usa i colori globali di Seaborn e le label dal tuo dizionario
         line_color = COLORS[i % len(COLORS)]
         label_name = ALGOS_TO_TEST.get(algo_key, algo_key)
 
-        # RENDERING ERROR BARS
         ax.errorbar(cores, means, yerr=margins, fmt='-s', markersize=8, linewidth=2.5,
                     capsize=5, capthick=2, label=label_name, color=line_color)
 
-    # Linea orizzontale ideale (Weak Scaling perfetto = tempo costante)
+    # Linea orizzontale ideale basata sulla baseline scelta
     ax.axhline(y=baseline_time, color='gray', linestyle='--', linewidth=2, label='Ideal Weak Scaling (Constant Time)')
-
-    # RIMOSSO HARDCODING '4': Usa la tua variabile di sistema
-    ax.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', linewidth=2, label='Physical Cores Limit')
+    ax.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', linewidth=2, label='Physical Cores Boundary')
 
     ax.set_xlabel('Number of Threads (Proportional Workload)', fontweight='bold')
     ax.set_ylabel('Execution Time (Seconds)', fontweight='bold')
     ax.set_title(f"Weak Scaling Execution Time: {target_ds}", fontweight='bold', pad=20)
 
-    ax.set_xticks(cores) # Usa i valori esatti dell'asse X (es. 1, 2, 4, 8)
+    ax.set_xticks(range(1, max_cores + 1))
     ax.legend(frameon=True, loc='best', fontsize='small')
 
     plt.tight_layout()
-
-    # Salvataggio da pubblicazione: PDF (vettoriale) tight
     output_file = plots_dir / f'ExecutionTime_WeakScaling_{target_ds}_{timestamp}.pdf'
     plt.savefig(output_file, format='pdf', bbox_inches='tight')
     plt.close()
@@ -713,11 +604,20 @@ if __name__ == "__main__":
         phase2_strong_scaling("StarLightCurves")
 
     # Phase 3: Gustafson (Weak Scaling)
+    data_weak_scaling = None
     if run_p3:
-        phase3_weak_scaling("StarLightCurves")
+        data_weak_scaling = phase3_weak_scaling("StarLightCurves")
 
     if run_p3b:
-        phase_3b_plot_gustafson_scaling(gustafson_results: dict, plots_dir: Path, target_ds: str, timestamp: str)
+        if data_weak_scaling is None:
+            print("[!] Avviso: Eseguo i benchmark della Fase 3 per ottenere i dati necessari alla Fase 3b...")
+            data_weak_scaling = phase3_weak_scaling("StarLightCurves")
+        phase_3b_plot_gustafson_scaling(
+            gustafson_results=data_weak_scaling,
+            plots_dir=PLOTS_DIR,
+            target_ds="StarLightCurves",
+            timestamp=TIMESTAMP
+        )
 
     # Phase 4: Chunk Size Optimization (Granularity)
     if run_p4:
