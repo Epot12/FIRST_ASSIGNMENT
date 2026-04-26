@@ -392,8 +392,8 @@ def phase_3b_plot_gustafson_scaling(gustafson_results: dict, plots_dir: Path, ta
         line_color = COLORS[i % len(COLORS)]
         label_name = ALGOS_TO_TEST.get(algo_key, algo_key)
 
-        ax.errorbar(cores, means, yerr=margins, fmt='-s', markersize=8, linewidth=2.5,
-                    capsize=5, capthick=2, label=label_name, color=line_color)
+        ax.plot(cores, means, marker='s', markersize=8, linewidth=2.5,
+                label=label_name, color=line_color)
 
     # Linea orizzontale ideale basata sulla baseline scelta
     ax.axhline(y=baseline_time, color='gray', linestyle='--', linewidth=2, label='Ideal Weak Scaling (Constant Time)')
@@ -403,7 +403,7 @@ def phase_3b_plot_gustafson_scaling(gustafson_results: dict, plots_dir: Path, ta
     ax.set_ylabel('Execution Time (Seconds)', fontweight='bold')
     ax.set_title(f"Weak Scaling Execution Time: {target_ds}", fontweight='bold', pad=20)
 
-    ax.set_xticks(range(1, max_cores + 1))
+    ax.set_xticks(cores)
     ax.legend(frameon=True, loc='best', fontsize='small')
 
     plt.tight_layout()
