@@ -6,6 +6,7 @@ import time
 import argparse
 import shutil
 import psutil
+import json
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -359,59 +360,77 @@ def phase3_weak_scaling(target_ds: str):
         results_for_3b[s_algo] = { "1": {"mean": T_seq / 1000.0, "ci_95_margin": 0.02} }
 
     print(f"[V] Phase 3 Plots saved successfully.")
+    with open(TABLES_DIR / f"weak_scaling_data_{target_ds}_{TIMESTAMP}.json", 'w') as f:
+        json.dump(results_for_3b, f, indent=4)
     return results_for_3b # Restituisce i dati per la fase 3b
 
 def phase_3b_plot_gustafson_scaling(gustafson_results: dict, plots_dir: Path, target_ds: str, timestamp: str):
-    print("\n[DATA VIZ] Generating Weak Scaling Execution Time Plot (with Error Bars)...")
+    print("\n[DATA VIZ] Generating Weak Scaling Execution Time Plot (Clean Version)...")
     if not gustafson_results: return
 
+    # Configurazione estetica Seaborn
     sns.set_theme(style="whitegrid", context="paper", font_scale=1.4)
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    max_cores = 1
-    baseline_time = None
+    # 1. Identifichiamo tutti i thread testati per impostare correttamente l'asse X
+    # Cerchiamo un algoritmo parallelo per estrarre la lista dei thread
+    all_threads = []
+    for algo_key, data in gustafson_results.items():
+        if algo_key not in ["opt", "naive"]:
+            all_threads = sorted([int(k) for k in data.keys()])
+            break
 
-    # --- MODIFICA: Selezione intelligente della baseline ---
-    # Usiamo il tempo dell'algoritmo sequenziale ottimizzato sul carico base
+    # Se non troviamo paralleli (caso limite), usiamo quelli disponibili
+    if not all_threads:
+        all_threads = sorted([int(k) for k in list(gustafson_results.values())[0].keys()])
+
+    # 2. Selezione della Baseline (Linea ideale)
+    # Usiamo il tempo dell'algoritmo sequenziale ottimizzato sul carico base (1)
     if "opt" in gustafson_results:
         baseline_time = gustafson_results["opt"]["1"]["mean"]
     else:
-        # Fallback se 'opt' non è stato testato
-        first_algo_key = list(gustafson_results.keys())[0]
-        baseline_time = gustafson_results[first_algo_key]["1"]["mean"]
+        baseline_time = gustafson_results[list(gustafson_results.keys())[0]]["1"]["mean"]
 
-    # Ciclo di plotting per tutti gli algoritmi
+    # 3. Ciclo di plotting
     for i, (algo_key, data) in enumerate(gustafson_results.items()):
-        # Consideriamo solo i thread effettivamente testati (esclusi quelli sequenziali simulati)
-        cores = sorted([int(k) for k in data.keys()])
-        means = [data[str(c)]["mean"] for c in cores]
-        margins = [data[str(c)]["ci_95_margin"] for c in cores]
+        # --- MODIFICA: Rimuoviamo i punti degli algoritmi sequenziali dal grafico ---
+        if algo_key in ["opt", "naive"]:
+            continue # Salta il plot, li usiamo solo per la baseline teorica
 
-        if max(cores) > max_cores: max_cores = max(cores)
+        cores_local = sorted([int(k) for k in data.keys()])
+        means = [data[str(c)]["mean"] for c in cores_local]
 
         line_color = COLORS[i % len(COLORS)]
         label_name = ALGOS_TO_TEST.get(algo_key, algo_key)
 
-        ax.plot(cores, means, marker='s', markersize=8, linewidth=2.5,
+        # Plot standard (punti + linee)
+        ax.plot(cores_local, means, marker='s', markersize=8, linewidth=2.5,
                 label=label_name, color=line_color)
 
-    # Linea orizzontale ideale basata sulla baseline scelta
+    # 4. Linee di riferimento e Boundary
+    # Linea orizzontale ideale (Weak Scaling perfetto = tempo costante)
     ax.axhline(y=baseline_time, color='gray', linestyle='--', linewidth=2, label='Ideal Weak Scaling (Constant Time)')
-    ax.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', linewidth=2, label='Physical Cores Boundary')
 
+    # Linea verticale dei core fisici
+    ax.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', linewidth=2, label='Physical Cores Limit')
+
+    # 5. Formattazione finale
     ax.set_xlabel('Number of Threads (Proportional Workload)', fontweight='bold')
     ax.set_ylabel('Execution Time (Seconds)', fontweight='bold')
     ax.set_title(f"Weak Scaling Execution Time: {target_ds}", fontweight='bold', pad=20)
 
-    ax.set_xticks(cores)
+    # Impostiamo i ticks corretti usando la variabile definita all'inizio
+    ax.set_xticks(all_threads)
     ax.legend(frameon=True, loc='best', fontsize='small')
 
     plt.tight_layout()
+
+    # Salvataggio PDF vettoriale tight
     output_file = plots_dir / f'ExecutionTime_WeakScaling_{target_ds}_{timestamp}.pdf'
     plt.savefig(output_file, format='pdf', bbox_inches='tight')
     plt.close()
 
-    print(f"[V] Execution Time plot saved in: {output_file}")
+    print(f"[V] Clean Execution Time plot saved in: {output_file}")
 
 
 # PHASE 4: GRANULARITY PROFILING (CHUNK SIZE)
@@ -578,16 +597,24 @@ if __name__ == "__main__":
     run_p4 = args.all or args.p4
     run_p5 = args.all or args.p5
 
-    # If the user does not specify any steps, print the help and exit
-    if not any([run_p1, run_p2, run_p3, run_p3b, run_p4, run_p5]):
+    # 2. Controllo se almeno una fase è selezionata (corretto senza duplicati)
+    phases_flags = [run_p1, run_p2, run_p3, run_p3b, run_p4, run_p5]
+    if not any(phases_flags):
         print("\n[!] No phase selected.")
         parser.print_help()
         sys.exit(0)
 
+    # 3. Creazione del riepilogo testuale (MOLTO PIÙ CHIARO)
+    # Creiamo una lista di etichette per le fasi attive
+    phase_labels = [
+        ("1", run_p1), ("2", run_p2), ("3", run_p3),
+        ("3b", run_p3b), ("4", run_p4), ("5", run_p5)
+    ]
+    active_phases = [label for label, active in phase_labels if active]
+
     print("\n" + "="*60)
     print("      HPC BENCHMARK SUITE INITIALIZATION")
-    active_phases = [i+1 for i, p in enumerate([run_p1, run_p2, run_p3, run_p4, run_p5]) if p]
-    print(f" Enabled phases: {active_phases}")
+    print(f" Enabled phases: {', '.join(active_phases)}")
     print("="*60)
 
     # 1. Build Engine: clean execution before tests
