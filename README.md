@@ -27,8 +27,8 @@ Since the framework compiles C++ OpenMP code and builds some Python data-generat
 ```bash
 sudo apt update && sudo apt install -y \
     build-essential cmake g++ git \
-    gperftools libgoogle-perftools-dev \
-    python3-dev libfreetype6-dev libpng-dev pkg-config
+    google-perftools libgoogle-perftools-dev \
+    python3-dev libfreetype-dev libpng-dev pkg-config
 ```
 
 ### Step 1: Clone the Repository
