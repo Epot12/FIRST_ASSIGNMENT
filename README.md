@@ -95,7 +95,7 @@ uv run python run_profiling.py --algo <ALGORITHM_FLAG>
 
 Run 
 ```bash
-uv run python run_sanitizing.py
+uv run python run_sanitizing.py --algo <ALGORITHM_FLAG> type <TYPE_FLAG>
 ```
 
 
@@ -116,7 +116,7 @@ Running the script without arguments triggers a comprehensive validation pipelin
 (Note: The algorithm identifiers for the --algo flag are identical to those listed in the Profiling section).
 
 ```bash
-uv run python run_sanitizing.py --algo dat_par_ult
+uv run python run_sanitizing.py --algo dat_par_ult --type all
 ```
 
 ### Supported Algorithm Flags
@@ -134,3 +134,18 @@ You must replace `<ALGORITHM_FLAG>` with one of the following exact string ident
 | `dat_par_ext` | Extreme Data Parallelism |
 | `dat_par_ult` | Ultra Data Parallelism |
 | `dat_par_ult_x` | Ultra-X Data Parallelism (Experimental) |
+
+### Supported Sanitizer Flags (`--type`)
+
+The dynamic analysis pipeline leverages the LLVM/Clang compiler infrastructure. By passing the `--type <FLAG>` argument, the orchestrator recompiles the C++ source code injecting specific runtime instrumentation.
+
+The exact identifiers recognized by the orchestrator are detailed below:
+
+| Flag | Sanitizer Suite | Injected Compiler Flags | Primary Detection Targets                                                                                                                                               |
+| :--- | :--- | :--- |:------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `asan` | **Address & Undefined Behavior** | `-fsanitize=address` <br> `-fsanitize=undefined` | Out-of-bounds accesses (buffer overflows), use-after-free, memory leaks, integer overflows, and division by zero.                                                       |
+| `tsan` | **Thread Sanitizer** | `-fsanitize=thread` | Unsynchronized concurrent memory accesses (Data Races) and threading deadlocks within OpenMP parallel regions.                                                          |
+| `msan` | **Memory Sanitizer** | `-fsanitize=memory` | Reads of uninitialized memory bits. <br><br> ***Note:** MSan requires a Linux kernel. The orchestrator will gracefully skip this test if executed on macOS or Windows.* |
+
+> **Note on Compiler Overrides:**
+> To ensure these sanitizers function correctly, the orchestrator bypasses the system's default compiler (e.g., GCC) by explicitly exporting `CC=clang` and `CXX=clang++` into the build environment. Furthermore, standard compiler optimizations are reduced (`-O1`) and frame pointers are preserved (`-fno-omit-frame-pointer`) to guarantee clear and actionable stack traces upon error detection.
