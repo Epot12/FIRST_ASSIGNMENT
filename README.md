@@ -47,13 +47,12 @@ This project utilizes **`uv`** as the primary package manager to ensure determin
 uv sync
 ```
 #### Option B 
-uv needs to be installed to manage the dependencies of this project.
+uv needs to be installed to manage the dependencies of this project. uv must be installed inside your Linux/WSL environment to manage the dependencies. Do not use the Windows installation if you are on WSL.
 ```bash
 # Linux and macOS
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Windows
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+source $HOME/.cargo/env
 ```
 
 ## Running the project
