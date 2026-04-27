@@ -116,7 +116,7 @@ Running the script without arguments triggers a comprehensive validation pipelin
 (Note: The algorithm identifiers for the --algo flag are identical to those listed in the Profiling section).
 
 ```bash
-uv run python run_sanitizers.py --algo dat_par_ult
+uv run python run_sanitizing.py --algo dat_par_ult
 ```
 
 ### Supported Algorithm Flags
