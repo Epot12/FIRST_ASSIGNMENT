@@ -59,7 +59,7 @@ source $HOME/.cargo/env
 ### Downloading data
 - To download datasets and create synthetic data run
 ```bash
-uv run python automation_scripts/setup_datasets.py
+uv run automation_scripts/setup_datasets.py
 ```
 in the project folder.
 ### Running benchmarks
