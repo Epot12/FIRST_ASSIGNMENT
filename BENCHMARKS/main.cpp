@@ -282,13 +282,13 @@ int main(int argc, char* argv[]) {
         if (config.algo == "dat_par_ult" || config.algo == "all") {
             run_experiment("DATA_PARALLEL_ULTRA", [&]() {
                 return dat_par_finder_ult(flat_queries, config.query_length, flat_data, data_offsets);
-            }); // <-- Chiusura corretta della lambda e della funzione
-        } // <-- Chiusura corretta dell'if
+            });
+        }
 
         if (config.algo == "dat_par_ult_x" || config.algo == "all") {
             run_experiment("DATA_PARALLEL_ULTRA_X", [&]() {
                 return dat_par_finder_ult_x(flat_queries, config.query_length, flat_data, data_offsets);
-            }); // <-- Chiusura corretta della lambda e della funzione
+            });
 
         }
 

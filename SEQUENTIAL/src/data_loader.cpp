@@ -51,7 +51,7 @@ std::vector<std::vector<real_t>> DataLoader::load(const std::string& filepath, b
 
         if (ptr >= end) break;
 
-        // PARSING C++17 (Ultra-Fast)
+        // PARSING
         real_t val;
         auto [next_ptr, ec] = std::from_chars(ptr, end, val);
 

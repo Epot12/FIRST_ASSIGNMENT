@@ -66,7 +66,7 @@ std::vector<match_result> par_finder(
 
                     size_t window_start_idx = ts_start + w;
 
-                    // Stencil Pattern: Recalculation of mean and variance "from scratch" (O(m))
+                    // Recalculation of mean and variance "from scratch"
                     real_t ex = 0.0;
                     real_t ex2 = 0.0;
                     for (size_t k = 0; k < query_length; k++) {

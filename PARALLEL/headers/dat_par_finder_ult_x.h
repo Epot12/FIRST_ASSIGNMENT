@@ -7,7 +7,7 @@
 #include "../../SEQUENTIAL/headers/data_loader.h"
 #include "../../SEQUENTIAL/headers/match_result.h"
 
-// Restituisce la dimensione minima per evitare il false sharing sulla macchina attuale
+// Returns the minimum size to avoid false sharing on the current machine
 #ifdef __cpp_lib_hardware_interference_size
 using std::hardware_destructive_interference_size;
 #else

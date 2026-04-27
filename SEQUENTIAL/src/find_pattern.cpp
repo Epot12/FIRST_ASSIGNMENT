@@ -21,7 +21,7 @@ match_result find_pattern(const vector<real_t> &query, const vector<vector<real_
                 }
                 real_t mu = sum / query_size;
 
-                // 2. CALCOLO DEVIAZIONE STANDARD LOCALE (sigma) "da zero"
+                // 2. CALCULATION OF LOCAL STANDARD DEVIATION (sigma) "from scratch"
                 real_t sq_sum = 0.0;
                 for (size_t k = 0; k < query_size; k++) {
                     real_t diff = data[i][j + k] - mu;
@@ -29,7 +29,7 @@ match_result find_pattern(const vector<real_t> &query, const vector<vector<real_
                 }
                 real_t sigma = std::sqrt(sq_sum / query_size);
 
-                // Protezione per segmenti costanti (es. linee piatte)
+                // Protection for constant segments (e.g. flat lines)
                 if (sigma == 0.0) sigma = 1e-8;
                 real_t distance = 0.0;
                 for (size_t k = 0; k < query_size; k++) {

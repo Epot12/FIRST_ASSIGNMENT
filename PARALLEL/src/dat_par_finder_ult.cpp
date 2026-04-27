@@ -20,7 +20,7 @@ std::vector<match_result> dat_par_finder_ult(
 
     std::vector<real_t> flat_queries_norm(flat_queries.size());
 
-    // 1. BATCH PRE-PROCESSING: Normalization (Vectorized by SIMD)
+    // 1. BATCH PRE-PROCESSING: Normalization
     for (size_t q = 0; q < num_queries; q++) {
         size_t offset = q * query_length;
         z_normalize(&flat_queries[offset], &flat_queries_norm[offset], query_length);
@@ -48,7 +48,7 @@ std::vector<match_result> dat_par_finder_ult(
         }
 
         // 4. LOOP INTERCHANGE and LOAD BALANCING
-#pragma omp for schedule(dynamic, 16) nowait  //here the value was dynamic, 16 but it has been removed to use runtime
+#pragma omp for schedule(dynamic, 16) nowait
         for (size_t i = 0; i < db_size; i++) {
             size_t ts_start = data_offsets[i];
             size_t ts_end = data_offsets[i + 1];

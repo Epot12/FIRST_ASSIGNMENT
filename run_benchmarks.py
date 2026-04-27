@@ -57,9 +57,9 @@ ALGOS_TO_TEST = {
 }
 
 ALGO_DEFAULTS = {
-    "naive":         None,         # Sequenziale
-    "opt":           None,         # Sequenziale
-    "par_wind":      "guided,256", # Par_finder (Windows parallel)
+    "naive":         None,         # sequential
+    "opt":           None,         # sequential
+    "par_wind":      "guided,256",
     "mult_par":      "dynamic,1",
     "mult_par_opt":  "dynamic,1",
     "dat_par":       "guided,16",
@@ -102,14 +102,14 @@ def run_cpp_benchmark(algo: str, dataset_path: str, threads: int,
                       query_length: int = DEFAULT_QUERY_LENGTH,
                       limit: int = 0, chunk: int = 0):
     """
-    Esegue il benchmark C++ configurando l'ambiente OpenMP (Threads e Scheduling).
-    Ritorna una tupla (Wall Time Medio, Accuratezza string).
+    Runs the C++ benchmark by configuring the OpenMP environment (Threads and Scheduling).
+    Returns a tuple (Average Wall Time, String Accuracy).
     """
     if not os.path.exists(dataset_path):
-        print(f"[ERROR] Dataset non trovato: {dataset_path}")
+        print(f"[ERROR] Dataset not found: {dataset_path}")
         return 0.0, "0/0"
 
-    # Preparazione degli argomenti per l'eseguibile C++
+    # Preparing arguments for the C++ executable
     cmd = [
         str(EXEC_PATH),
         "--dataset", dataset_path,
@@ -119,38 +119,38 @@ def run_cpp_benchmark(algo: str, dataset_path: str, threads: int,
     ]
 
     if limit > 0: cmd.extend(["--limit", str(limit)])
-    if chunk > 0: cmd.extend(["--chunk", str(chunk)]) # Passato anche come flag per log/statistiche C++
+    if chunk > 0: cmd.extend(["--chunk", str(chunk)]) # Also passed as a C++ log/stats flag
 
-    # Gestione delle variabili d'ambiente (Il "cuore" della comunicazione con OpenMP)
+    # Management of environment variables
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(threads)
 
-    # Recuperiamo la configurazione di scheduling predefinita
+    # We recover the default scheduling configuration
     config_omp = ALGO_DEFAULTS.get(algo)
 
-    if config_omp: # Se l'algoritmo è uno di quelli paralleli
+    if config_omp: # If the algorithm is one of the parallel ones
         if chunk > 0:
-            # Se la Fase 4 sta forzando un chunk specifico per profilazione:
-            # Estraiamo la politica (es. 'guided') e iniettiamo il nuovo chunk
+            # If Phase 4 is forcing a specific chunk for profiling:
+            # We extract the policy (e.g. 'guided') and inject the new chunk
             policy = config_omp.split(',')[0]
             env["OMP_SCHEDULE"] = f"{policy},{chunk}"
         else:
-            # Esecuzione standard: usiamo il miglior setup conosciuto
+            # Standard execution: we use the best known setup
             env["OMP_SCHEDULE"] = config_omp
     else:
-        # Per i sequenziali o se non specificato, usiamo un default neutro
+        # For sequential or if not specified, we use a neutral default
         env["OMP_SCHEDULE"] = "static"
 
     try:
-        # Esecuzione del processo C++
+        # Running the C++ process
         result = subprocess.run(cmd, env=env, capture_output=True, text=True, check=True)
 
-        # Parsing dell'output tramite Regex
-        # 1. Estrazione del Wall Time medio calcolato dal benchmark C++
+        # Parsing the output using Regex
+        # 1. Extraction of the average Wall Time calculated from the C++ benchmark
         time_match = re.search(r"\[PYTHON_PARSE\] Wall Time_MEAN:\s+([\d.]+)", result.stdout)
         wall_time = float(time_match.group(1)) if time_match else 0.0
 
-        # 2. Estrazione dell'accuratezza (es. "Accuracy: 20/20")
+        # 2. Accuracy extraction (e.g. "Accuracy: 20/20")
         acc_match = re.search(r"Accuracy:\s+([0-9]+/[0-9]+)", result.stdout)
         accuracy = acc_match.group(1) if acc_match else "N/A"
 
@@ -197,7 +197,6 @@ def phase1_raw_performance():
         plt.close()
 
 
-# STRONG SCALING (AMDAHL)
 
 
 # STRONG SCALING (AMDAHL)
@@ -220,21 +219,21 @@ def phase2_strong_scaling(target_ds: str):
 
     plt.figure(figsize=(10, 6))
 
-    # 1. Disegna la linea diagonale di riferimento (Ideal Speedup)
+    # 1. Draw the diagonal reference line (Ideal Speedup)
     plt.plot(threads_list, threads_list, linestyle='--', color='dimgray', label='Ideal Speedup')
 
-    # 2. Cicla sugli algoritmi, escludendo i sequenziali dal grafico
+    # 2. Cycle through the algorithms, excluding sequential ones from the graph
     for i, (algo, label) in enumerate(ALGOS_TO_TEST.items()):
         if algo in ["naive", "opt"]:
-            continue # I sequenziali servono solo come base di calcolo, non si plottano
+            continue
 
-        # Calcola lo speedup per i vari thread
+        # Calculate speedup for various threads
         speedups = []
         for t in threads_list:
             t_par, _ = run_cpp_benchmark(algo, ds_path, t)
             speedups.append(t_sequential / t_par if t_par > 0 else 0)
 
-        # Disegna la linea dell'algoritmo parallelo con spessore e marker ben visibili
+        # Draw the parallel algorithm line with clearly visible thickness and markers
         plt.plot(threads_list, speedups, marker='s', linewidth=2.5, markersize=8, label=label)
 
     # highlighting the limit of physical cores
@@ -245,14 +244,14 @@ def phase2_strong_scaling(target_ds: str):
     plt.ylabel('Speedup (T_seq / T_par)', fontweight='bold')
     plt.title(f"Strong Scaling (Amdahl's Law): {target_ds}", fontsize=16, pad=20)
 
-    # Scala l'asse Y per inquadrare perfettamente lo speedup ideale
+    # Scale the Y axis to perfectly frame the ideal speedup
     plt.ylim(0, MAX_LOGICAL_CORES * 1.1)
 
     plt.legend(loc='best', fontsize=10, frameon=True, shadow=True, framealpha=0.85)
     plt.xticks(threads_list)
     plt.tight_layout()
 
-    # Salvataggio dinamico con storico tramite TIMESTAMP
+    # Dynamic saving with history via TIMESTAMP
     plot_file = PLOTS_DIR / f'Scaling_{target_ds}_{TIMESTAMP}.pdf'
     plt.savefig(plot_file)
     plt.close()
@@ -291,7 +290,7 @@ def phase3_weak_scaling(target_ds: str):
         T1, _ = run_cpp_benchmark(algo, ds_path, threads=1, limit=base_limit)
         efficiencies.append(1.0)
 
-        # Inizializziamo l'algoritmo nel dizionario per la fase 3b
+        # We initialize the algorithm in the dictionary for phase 3b
         results_for_3b[algo] = { "1": {"mean": T1 / 1000.0, "ci_95_margin": 0.05} }
 
         print(f"\n[{label}]")
@@ -301,8 +300,8 @@ def phase3_weak_scaling(target_ds: str):
             Ew = (T1 / TN) if TN > 0 else 0.0
             efficiencies.append(Ew)
 
-            # Salviamo il dato (convertito in secondi) per la fase 3b
-            # Nota: usiamo 0.05 come margine d'errore placeholder o la std_dev se disponibile
+            # We save the data (converted into seconds) for phase 3b
+            # Note: we use 0.05 as the placeholder margin of error or the std_dev if available
             results_for_3b[algo][str(n)] = {"mean": TN / 1000.0, "ci_95_margin": 0.05}
 
         plt.plot(threads_list, efficiencies, marker='o', linewidth=2.5, markersize=7, label=label)
@@ -329,7 +328,7 @@ def phase3_weak_scaling(target_ds: str):
 
     for algo, label in parallel_algos.items():
         gustafson_speedups = []
-        # Recuperiamo il T1 già calcolato prima per efficienza
+        # We recover the T1 already calculated before
         T1_sec = results_for_3b[algo]["1"]["mean"] * 1000.0
 
         gustafson_speedups.append(1.0)
@@ -354,7 +353,7 @@ def phase3_weak_scaling(target_ds: str):
     plt.savefig(file_speed, format='pdf', bbox_inches='tight')
     plt.close()
 
-    # Anche gli algoritmi sequenziali devono essere nel dizionario per la baseline della 3b
+    # Sequential algorithms must also be in the dictionary for the 3b baseline
     for s_algo in ["opt", "naive"]:
         T_seq, _ = run_cpp_benchmark(s_algo, ds_path, threads=1, limit=base_limit)
         results_for_3b[s_algo] = { "1": {"mean": T_seq / 1000.0, "ci_95_margin": 0.02} }
@@ -362,40 +361,40 @@ def phase3_weak_scaling(target_ds: str):
     print(f"[V] Phase 3 Plots saved successfully.")
     with open(TABLES_DIR / f"weak_scaling_data_{target_ds}_{TIMESTAMP}.json", 'w') as f:
         json.dump(results_for_3b, f, indent=4)
-    return results_for_3b # Restituisce i dati per la fase 3b
+    return results_for_3b # Returns data for phase 3b
 
 def phase_3b_plot_gustafson_scaling(gustafson_results: dict, plots_dir: Path, target_ds: str, timestamp: str):
     print("\n[DATA VIZ] Generating Weak Scaling Execution Time Plot (Clean Version)...")
     if not gustafson_results: return
 
-    # Configurazione estetica Seaborn
+    # Seaborn aesthetic configuration
     sns.set_theme(style="whitegrid", context="paper", font_scale=1.4)
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    # 1. Identifichiamo tutti i thread testati per impostare correttamente l'asse X
-    # Cerchiamo un algoritmo parallelo per estrarre la lista dei thread
+    # 1. We identify all threads tested to set the X-axis correctly
+    # looking for a parallel algorithm to extract the thread list
     all_threads = []
     for algo_key, data in gustafson_results.items():
         if algo_key not in ["opt", "naive"]:
             all_threads = sorted([int(k) for k in data.keys()])
             break
 
-    # Se non troviamo paralleli (caso limite), usiamo quelli disponibili
+    # If we do not find parallels (limit case), we use the available ones
     if not all_threads:
         all_threads = sorted([int(k) for k in list(gustafson_results.values())[0].keys()])
 
-    # 2. Selezione della Baseline (Linea ideale)
-    # Usiamo il tempo dell'algoritmo sequenziale ottimizzato sul carico base (1)
+    # 2. Baseline Selection (Ideal Line)
+    # We use the time optimized sequential algorithm on the base load
     if "opt" in gustafson_results:
         baseline_time = gustafson_results["opt"]["1"]["mean"]
     else:
         baseline_time = gustafson_results[list(gustafson_results.keys())[0]]["1"]["mean"]
 
-    # 3. Ciclo di plotting
+    # 3. plotting
     for i, (algo_key, data) in enumerate(gustafson_results.items()):
-        # --- MODIFICA: Rimuoviamo i punti degli algoritmi sequenziali dal grafico ---
+        # removing the sequential algorithm points from the plot
         if algo_key in ["opt", "naive"]:
-            continue # Salta il plot, li usiamo solo per la baseline teorica
+            continue # Skip the plot, we only use them for the theoretical baseline
 
         cores_local = sorted([int(k) for k in data.keys()])
         means = [data[str(c)]["mean"] for c in cores_local]
@@ -403,29 +402,29 @@ def phase_3b_plot_gustafson_scaling(gustafson_results: dict, plots_dir: Path, ta
         line_color = COLORS[i % len(COLORS)]
         label_name = ALGOS_TO_TEST.get(algo_key, algo_key)
 
-        # Plot standard (punti + linee)
+        # Plot standard
         ax.plot(cores_local, means, marker='s', markersize=8, linewidth=2.5,
                 label=label_name, color=line_color)
 
-    # 4. Linee di riferimento e Boundary
-    # Linea orizzontale ideale (Weak Scaling perfetto = tempo costante)
+    # 4. Lines and Boundary
+    # ideal horizontal line
     ax.axhline(y=baseline_time, color='gray', linestyle='--', linewidth=2, label='Ideal Weak Scaling (Constant Time)')
 
-    # Linea verticale dei core fisici
+    # physical cores vertical line
     ax.axvline(x=MAX_PHYSICAL_CORES, color='red', linestyle=':', linewidth=2, label='Physical Cores Limit')
 
-    # 5. Formattazione finale
+    # 5. final formatting
     ax.set_xlabel('Number of Threads (Proportional Workload)', fontweight='bold')
     ax.set_ylabel('Execution Time (Seconds)', fontweight='bold')
     ax.set_title(f"Weak Scaling Execution Time: {target_ds}", fontweight='bold', pad=20)
 
-    # Impostiamo i ticks corretti usando la variabile definita all'inizio
+    # We set the correct ticks using the variable defined at the beginning
     ax.set_xticks(all_threads)
     ax.legend(frameon=True, loc='best', fontsize='small')
 
     plt.tight_layout()
 
-    # Salvataggio PDF vettoriale tight
+    # Tight vector PDF saving
     output_file = plots_dir / f'ExecutionTime_WeakScaling_{target_ds}_{timestamp}.pdf'
     plt.savefig(output_file, format='pdf', bbox_inches='tight')
     plt.close()
@@ -440,13 +439,13 @@ def phase4_chunk_optimization(target_ds: str, interactive: bool = True):
     print(f" PHASE 4: CHUNK SIZE OPTIMIZATION ON {target_ds}")
     print("="*60)
 
-    # 1. Filtro: Esci se l'utente prova a profilare sequenziali (non ha senso tecnico)
-    # Prendiamo solo le chiavi che NON sono 'naive' o 'opt'
+    # 1. Filter: Exit if user tries to profile sequentially (makes no technical sense)
+    # We only take keys that are NOT 'naive' or 'opt'
     valid_algos = [k for k in ALGOS_TO_TEST.keys() if k not in ["naive", "opt"]]
 
     algos_to_run = []
 
-    # 2. Logica Pipeline vs Manuale
+    # 2. Pipeline vs Manual
     if not interactive:
         print("[PIPELINE MODE] Selezione automatica di default: dat_par_ult")
         algos_to_run = ["dat_par_ult"]
@@ -465,7 +464,7 @@ def phase4_chunk_optimization(target_ds: str, interactive: bool = True):
 
             scelte_multiple = [s.strip() for s in scelta.split(",") if s.strip()]
 
-            # Controllo validità: devono essere algoritmi paralleli esistenti
+            # Validity check: Must be existing parallel algorithms
             if scelte_multiple and all(s in valid_algos for s in scelte_multiple):
                 algos_to_run = scelte_multiple
                 break
@@ -503,7 +502,7 @@ def phase4_chunk_optimization(target_ds: str, interactive: bool = True):
         plt.legend()
         plt.tight_layout()
 
-        # Salvataggio univoco con Algorithm Name e TIMESTAMP
+        # saving with Algorithm Name and TIMESTAMP
         plt.savefig(PLOTS_DIR / f'Phase4_ChunkOpt_{target_algo}_{target_ds}_{TIMESTAMP}.pdf')
         plt.close()
 
@@ -597,15 +596,15 @@ if __name__ == "__main__":
     run_p4 = args.all or args.p4
     run_p5 = args.all or args.p5
 
-    # 2. Controllo se almeno una fase è selezionata (corretto senza duplicati)
+    # 2. Check if at least one phase is selected
     phases_flags = [run_p1, run_p2, run_p3, run_p3b, run_p4, run_p5]
     if not any(phases_flags):
         print("\n[!] No phase selected.")
         parser.print_help()
         sys.exit(0)
 
-    # 3. Creazione del riepilogo testuale (MOLTO PIÙ CHIARO)
-    # Creiamo una lista di etichette per le fasi attive
+    # 3. Creation of the textual summary
+    # create a list of labels for the active phases
     phase_labels = [
         ("1", run_p1), ("2", run_p2), ("3", run_p3),
         ("3b", run_p3b), ("4", run_p4), ("5", run_p5)
@@ -648,8 +647,8 @@ if __name__ == "__main__":
 
     # Phase 4: Chunk Size Optimization (Granularity)
     if run_p4:
-        # Se la fase 4 è parte di --all, non è interattiva (va in automatico)
-        # Se è chiamata singolarmente con --p4, abilita il menu
+        # If step 4 is part of --all, it is not interactive (it runs automatically)
+        # If called individually with --p4, enable the menu
         is_interactive = not args.all
         phase4_chunk_optimization("StarLightCurves", interactive=is_interactive)
 

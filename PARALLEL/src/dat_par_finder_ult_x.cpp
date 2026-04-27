@@ -22,7 +22,7 @@ std::vector<match_result> dat_par_finder_ult_x(
     size_t db_size = data_offsets.size() - 1;
     size_t num_queries = flat_queries.size() / query_length;
 
-    // Inizializzazione risultati globali
+    // Initializing global results
     std::vector<match_result> best_results(num_queries);
     for(size_t q = 0; q < num_queries; ++q) {
         best_results[q].distance = std::numeric_limits<real_t>::max();
@@ -32,7 +32,7 @@ std::vector<match_result> dat_par_finder_ult_x(
 
     std::vector<real_t> flat_queries_norm(flat_queries.size());
 
-    // 1. BATCH PRE-PROCESSING: Normalizzazione Query (Vettorizzata)
+    // 1. BATCH PRE-PROCESSING: query normalization
     for (size_t q = 0; q < num_queries; q++) {
         size_t offset = q * query_length;
         z_normalize(&flat_queries[offset], &flat_queries_norm[offset], query_length);
@@ -43,14 +43,14 @@ std::vector<match_result> dat_par_finder_ult_x(
         global_thresholds[q].value.store(std::numeric_limits<real_t>::max(), std::memory_order_relaxed);
     }
 
-    // 3. REGIONE PARALLELA CON SCOPING ESPLICITO
+    // 3. Parallel region
 #pragma omp parallel default(none) \
     shared(db_size, num_queries, query_length, data_offsets, flat_data, flat_queries_norm, best_results, global_thresholds)
     {
-        // Buffer circolare locale al thread
+        // circular buffer local to thread
         std::vector<real_t> X(query_length);
 
-        // Risultati privati per evitare False Sharing durante i calcoli intensivi
+        // private results
         std::vector<match_result> thread_bests(num_queries);
         for(size_t q = 0; q < num_queries; ++q) {
             thread_bests[q].distance = std::numeric_limits<real_t>::max();
@@ -58,7 +58,7 @@ std::vector<match_result> dat_par_finder_ult_x(
             thread_bests[q].start_index = 0;
         }
 
-        // 4. LOAD BALANCING (Configurabile via Python tramite runtime)
+        // 4. LOAD BALANCING
 #pragma omp for schedule(runtime) nowait
         for (size_t i = 0; i < db_size; i++) {
             size_t ts_start = data_offsets[i];
@@ -70,7 +70,7 @@ std::vector<match_result> dat_par_finder_ult_x(
             real_t ex = 0.0;
             real_t ex2 = 0.0;
 
-            // Algoritmo Buffer Circolare
+            // circular buffer algorithm
             for (size_t count = 0; count < series_size; count++) {
                 size_t idx_circ = count % query_length;
 
@@ -80,7 +80,7 @@ std::vector<match_result> dat_par_finder_ult_x(
 
                 if (count >= query_length - 1) {
 
-                    // Mitigazione errore Floating Point (SIMD) ogni 1M di passi
+                    // Floating Point Error Mitigation (SIMD) every 1M steps
                     size_t sliding_step = count - (query_length - 1);
                     if (sliding_step > 0 && sliding_step % 1000000 == 0) {
                         ex = 0.0;
@@ -97,16 +97,16 @@ std::vector<match_result> dat_par_finder_ult_x(
                     real_t sigma = (variance > 0.0) ? std::sqrt(variance) : 1e-8;
                     real_t inv_sigma = 1.0 / sigma;
 
-                    // Confronto finestra attuale con tutte le query
+                    // Compare current window with all queries
                     for (size_t q = 0; q < num_queries; q++) {
                         size_t q_offset = q * query_length;
                         real_t dist = 0.0;
                         size_t j = 0;
 
-                        // Lettura atomica Lock-Free della soglia globale
+                        // Lock-Free atomic reading of the global threshold
                         real_t current_global_best = global_thresholds[q].value.load(std::memory_order_relaxed);
 
-                        // Pruning aggressivo: usa il minimo tra il record locale e quello globale
+                        // Aggressive pruning: Use the minimum between the local and global records
                         real_t pruning_threshold = std::min(thread_bests[q].distance, current_global_best);
 
                         while (j < query_length && dist < pruning_threshold) {
@@ -121,13 +121,13 @@ std::vector<match_result> dat_par_finder_ult_x(
                             j++;
                         }
 
-                        // Aggiornamento locale e globale se trovato nuovo record
+                        // Local and global update if new record found
                         if (dist < thread_bests[q].distance) {
                             thread_bests[q].distance = dist;
                             thread_bests[q].series_id = i;
                             thread_bests[q].start_index = count - query_length + 1;
 
-                            // Aggiornamento Globale Lock-Free (CAS Loop)
+                            // Globale Lock-Free update
                             real_t expected = global_thresholds[q].value.load(std::memory_order_relaxed);
                             while (dist < expected) {
                                 if (global_thresholds[q].value.compare_exchange_weak(expected, dist, std::memory_order_relaxed)) {
@@ -137,7 +137,7 @@ std::vector<match_result> dat_par_finder_ult_x(
                         }
                     }
 
-                    // Avanzamento finestra: rimozione vecchio valore
+                    // Window advancement: remove old value
                     size_t old_idx = idx_circ + 1;
                     if (old_idx >= query_length) {
                         old_idx -= query_length;
@@ -149,7 +149,7 @@ std::vector<match_result> dat_par_finder_ult_x(
             }
         }
 
-        // 5. RIDUZIONE CRITICA FINALE (Una sola volta per thread)
+        // 5. FINAL CRITICAL REDUCTION (Only once per thread)
 #pragma omp critical
         {
             for (size_t q = 0; q < num_queries; q++) {
