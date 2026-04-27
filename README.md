@@ -78,11 +78,18 @@ The proposed options are the following:
 
 ### Profiling code
 
-Run
+#### Performance Profiling 
+
+To conduct an in-depth micro-architectural analysis of the CPU time and identify performance bottlenecks, the project integrates **Google perftools (gperftools)**.
+
+The profiling workflow is fully automated via the `run_profiling.py` orchestrator.
+
+#### Execution
+To profile a specific algorithm, run the following command within the project root, specifying the target algorithm via the `--algo` flag:
+
 ```bash
-uv run python run_profiling.py
+uv run python run_profiling.py --algo <ALGORITHM_FLAG>
 ```
-in the project folder.
 
 ### Sanitizers
 
@@ -90,6 +97,40 @@ Run
 ```bash
 uv run python run_sanitizing.py
 ```
-in the project folder.
 
 
+#### Supported Sanitizers
+The orchestrator supports the injection of the following analysis tools:
+* **ASan + UBSan (`asan`)**: Address Sanitizer and Undefined Behavior Sanitizer.
+* **TSan (`tsan`)**: Thread Sanitizer (detects data races in OpenMP parallel regions).
+* **MSan (`msan`)**: Memory Sanitizer (detects uninitialized memory reads - *Linux kernel strictly required*).
+
+#### Execution Modes
+
+**1. Full Automated Validation Suite (Default)**
+Running the script without arguments triggers a comprehensive validation pipeline. The orchestrator will iteratively compile and test a hardcoded subset of the most critical algorithms (`find_pattern_opt`, `dat_par_finder_ext`, `dat_par_finder_ult`) against all supported sanitizers.
+
+**2. Targeted Sanitizer Execution**
+   To isolate and debug a specific algorithm with a designated sanitizer, utilize the --algo and --type flags.
+
+(Note: The algorithm identifiers for the --algo flag are identical to those listed in the Profiling section).
+
+```bash
+uv run python run_sanitizers.py --algo dat_par_ult
+```
+
+### Supported Algorithm Flags
+You must replace `<ALGORITHM_FLAG>` with one of the following exact string identifiers recognized by the C++ engine:
+
+| Flag / Abbreviation | Target Algorithm |
+| :--- | :--- |
+| `naive` | Standard Sequential (Naive) |
+| `opt` | Optimized Sequential |
+| `par_wind` | Parallel Window (Basic OpenMP) |
+| `mult_par` | Parallel Query (Multiple Queries) |
+| `mult_par_opt` | Optimized Parallel Query |
+| `dat_par` | Data Parallelism |
+| `dat_par_opt` | Optimized Data Parallelism |
+| `dat_par_ext` | Extreme Data Parallelism |
+| `dat_par_ult` | Ultra Data Parallelism |
+| `dat_par_ult_x` | Ultra-X Data Parallelism (Experimental) |
