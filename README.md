@@ -20,6 +20,17 @@ This project utilizes **`uv`** as the primary Python package and project manager
 
 ## Installation and Setup
 
+### Step 0 (Ubuntu)
+
+Since the framework compiles C++ OpenMP code and builds some Python data-generation libraries from source, specific system headers are required. Before proceeding, install the following system packages:
+
+```bash
+sudo apt update && sudo apt install -y \
+    build-essential cmake g++ git \
+    gperftools libgoogle-perftools-dev \
+    python3-dev libfreetype6-dev libpng-dev pkg-config
+```
+
 ### Step 1: Clone the Repository
 ```bash
 git clone https://github.com/Epot12/FIRST_ASSIGNMENT.git
@@ -62,6 +73,24 @@ You do not need to manually compile the C++ source code. The orchestration scrip
 The proposed options are the following:
 - --p1: runs all the algorithms measuring wall clock time and CPU time
 - --p2: runs experiments proving Amdahl's law
-- --p3: 
+- --p3 and p3b: run experiments for Gustafson's law
+- --p4: runs experiments to find optimal chunk size
+- --p5: sensitivity analysis is performed, plotting a final heatmap
+
+### Profiling code
+
+Run
+```bash
+uv run python run_profiling.py
+```
+in the project folder.
+
+### Sanitizers
+
+Run 
+```bash
+uv run python run_sanitizing.py
+```
+in the project folder.
 
 
